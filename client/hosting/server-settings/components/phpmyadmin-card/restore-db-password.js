@@ -1,7 +1,7 @@
-import { Dialog } from '@automattic/components';
 import { localize } from 'i18n-calypso';
 import { useEffect, useState } from 'react';
 import { connect } from 'react-redux';
+import ConfirmModal from 'calypso/components/confirm-modal';
 import {
 	withAnalytics,
 	composeAnalytics,
@@ -34,26 +34,17 @@ const RestorePasswordDialog = ( {
 		}
 	}, [ isVisible ] );
 
-	const buttons = [
-		{
-			action: 'restore',
-			label: translate( 'Restore' ),
-			onClick: () => setShouldRestore( true ),
-			isPrimary: true,
-		},
-		{
-			action: 'cancel',
-			label: translate( 'Cancel' ),
-			onClick: onCancel,
-		},
-	];
 	return (
-		<Dialog isVisible={ isVisible } buttons={ buttons } onClose={ onCancel }>
-			<h1>{ translate( 'Restore database password' ) }</h1>
-			<p>
-				{ translate( 'Are you sure you want to restore the default password of your database?' ) }
-			</p>
-		</Dialog>
+		<ConfirmModal
+			isVisible={ isVisible }
+			title={ translate( 'Restore database password' ) }
+			text={ translate(
+				'Are you sure you want to restore the default password of your database?'
+			) }
+			confirmButtonLabel={ translate( 'Restore' ) }
+			onCancel={ onCancel }
+			onConfirm={ () => setShouldRestore( true ) }
+		/>
 	);
 };
 
