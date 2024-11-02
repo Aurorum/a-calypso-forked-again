@@ -5,14 +5,13 @@
 	padding: 48px 48px 0;
 	max-width: 800px;
 
-}
+	.dialog__action-buttons {
+		border: 0;
+		padding: 35px 48px 48px;
 
-.dialog__action-buttons {
-	border: 0;
-	padding: 35px 48px 48px;
-
-	&::before {
-		display: none;
+		&::before {
+			display: none;
+		}
 	}
 }
 
