@@ -1,7 +1,7 @@
+import { Dialog } from '@automattic/components';
 import { localize } from 'i18n-calypso';
 import { useEffect, useState } from 'react';
 import { connect } from 'react-redux';
-import ConfirmModal from 'calypso/components/confirm-modal';
 import {
 	withAnalytics,
 	composeAnalytics,
