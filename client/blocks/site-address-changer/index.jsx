@@ -556,6 +556,7 @@ export class SiteAddressChanger extends Component {
 				isVisible={ isDialogVisible }
 				onClose={ onClose }
 				leaveTimeout={ 0 }
+				showCloseIcon
 			>
 				{ 0 === this.state.step && this.renderNewAddressForm() }
 				{ 1 === this.state.step && this.renderConfirmationForm() }
