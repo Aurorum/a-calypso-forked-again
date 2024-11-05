@@ -553,7 +553,6 @@ export class SiteAddressChanger extends Component {
 		return (
 			<Dialog
 				buttons={ this.getStepButtons() }
-				className="site-address-changer"
 				isVisible={ isDialogVisible }
 				onClose={ onClose }
 				leaveTimeout={ 0 }
