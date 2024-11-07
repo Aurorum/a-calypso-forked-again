@@ -24,7 +24,6 @@ import { getSelectedSiteId } from 'calypso/state/ui/selectors';
 import PostTypeListEmptyContent from './empty-content';
 import PostTypeListMaxPagesNotice from './max-pages-notice';
 import PostItem from './post-item';
-
 import './style.scss';
 
 /**
