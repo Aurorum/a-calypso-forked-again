@@ -24,6 +24,7 @@ import {
 import getEditorUrl from 'calypso/state/selectors/get-editor-url';
 import hasInitializedSites from 'calypso/state/selectors/has-initialized-sites';
 import { getSite, getSiteFrontPage, getSiteFrontPageType } from 'calypso/state/sites/selectors';
+import PostItemTrashAutoDeleteWarning from '../post-type-list/post-item-trash-warning';
 import BlogPostsPage from './blog-posts-page';
 import { sortPagesHierarchically } from './helpers';
 import Page from './page';
@@ -368,6 +369,7 @@ class Pages extends Component {
 
 		return (
 			<div id="pages" className="pages__page-list">
+				<PostItemTrashAutoDeleteWarning postType="page" />
 				{ this.renderBlogPostsPage() }
 				{ this.renderVirtualHomePage() }
 				{ site && this.renderSectionHeader() }

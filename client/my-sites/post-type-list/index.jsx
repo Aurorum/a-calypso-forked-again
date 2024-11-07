@@ -24,6 +24,8 @@ import { getSelectedSiteId } from 'calypso/state/ui/selectors';
 import PostTypeListEmptyContent from './empty-content';
 import PostTypeListMaxPagesNotice from './max-pages-notice';
 import PostItem from './post-item';
+import PostItemTrashAutoDeleteWarning from './post-item-trash-warning';
+
 import './style.scss';
 
 /**
@@ -249,6 +251,7 @@ class PostTypeList extends Component {
 
 		return (
 			<div className={ classes }>
+				<PostItemTrashAutoDeleteWarning postType="post" />
 				{ this.renderSectionHeader() }
 				{ query &&
 					range( 1, maxRequestedPage + 1 ).map( ( page ) => (
