@@ -32,7 +32,7 @@ class RemoveDomainDialog extends Component {
 
 	renderDomainDeletionWarning( productName ) {
 		const { currentRoute, isGravatarDomain, purchase, translate } = this.props;
-		const domain = purchase.domain;
+		const domain = purchase?.domain;
 
 		return (
 			<Fragment>
