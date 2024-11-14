@@ -14,6 +14,7 @@ import wpcom from 'calypso/lib/wp';
 import { domainManagementEdit, domainManagementTransferOut } from 'calypso/my-sites/domains/paths';
 import getCurrentRoute from 'calypso/state/selectors/get-current-route';
 import { getDomainsBySiteId } from 'calypso/state/sites/domains/selectors';
+import { getSiteSlug } from 'calypso/state/sites/selectors';
 
 class RemoveDomainDialog extends Component {
 	static propTypes = {
@@ -31,8 +32,7 @@ class RemoveDomainDialog extends Component {
 	};
 
 	renderDomainDeletionWarning( productName ) {
-		const { currentRoute, isGravatarDomain, purchase, translate } = this.props;
-		const domain = purchase?.domain;
+		const { translate, slug, currentRoute, isGravatarDomain } = this.props;
 
 		return (
 			<Fragment>
@@ -55,11 +55,9 @@ class RemoveDomainDialog extends Component {
 							args: { domain: productName },
 							components: {
 								strong: <strong />,
-								moveAnchor: (
-									<a href={ domainManagementEdit( domain, productName, currentRoute ) } />
-								),
+								moveAnchor: <a href={ domainManagementEdit( slug, productName, currentRoute ) } />,
 								transferAnchor: (
-									<a href={ domainManagementTransferOut( domain, productName, currentRoute ) } />
+									<a href={ domainManagementTransferOut( slug, productName, currentRoute ) } />
 								),
 							},
 						}
@@ -248,6 +246,10 @@ class RemoveDomainDialog extends Component {
 			},
 		];
 
+		if ( ! purchase ) {
+			return;
+		}
+
 		if ( chatButton ) {
 			buttons.unshift( chatButton );
 		}
@@ -276,5 +278,6 @@ export default connect( ( state, ownProps ) => {
 		isGravatarDomain: selectedDomain?.isGravatarDomain,
 		hasTitanWithUs: hasTitanMailWithUs( selectedDomain ),
 		currentRoute: getCurrentRoute( state ),
+		slug: getSiteSlug( state, ownProps.purchase.siteId ),
 	};
 } )( localize( RemoveDomainDialog ) );
