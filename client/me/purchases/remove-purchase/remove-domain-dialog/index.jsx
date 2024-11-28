@@ -202,7 +202,7 @@ class RemoveDomainDialog extends Component {
 						{
 							action: 'remove',
 							additionalClassNames: [
-								this.props.isRemoving || this.state.isCheckingEmail ? 'is-busy' : '',
+								this.props.isRemoving ? 'is-busy' : '',
 								this.state.step === 3 ? 'is-scary' : '',
 								'dialog__button--domains-remove',
 							],
