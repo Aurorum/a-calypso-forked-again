@@ -10,8 +10,8 @@ import FormTextInput from 'calypso/components/forms/form-text-input';
 import { getSelectedDomain } from 'calypso/lib/domains';
 import { getName } from 'calypso/lib/purchases';
 import { hasTitanMailWithUs } from 'calypso/lib/titan';
-import wpcom from 'calypso/lib/wp';
 import { domainManagementEdit, domainManagementTransferOut } from 'calypso/my-sites/domains/paths';
+import { getCurrentUserEmail } from 'calypso/state/current-user/selectors';
 import getCurrentRoute from 'calypso/state/selectors/get-current-route';
 import { getDomainsBySiteId } from 'calypso/state/sites/domains/selectors';
 import { getSiteSlug } from 'calypso/state/sites/selectors';
@@ -62,6 +62,7 @@ class RemoveDomainDialog extends Component {
 						}
 					) }
 				</p>
+				<p>{ translate( 'Do you still want to continue with deleting your domain?' ) }</p>
 			</Fragment>
 		);
 	}
@@ -152,28 +153,13 @@ class RemoveDomainDialog extends Component {
 		);
 	}
 
-	async isWpComEmailBasedOnDomain() {
-		this.setState( {
-			isCheckingEmail: true,
-		} );
-
-		const { purchase } = this.props;
-		const productName = getName( purchase );
-		const { email } = await wpcom.me().get();
-
-		this.setState( {
-			isCheckingEmail: false,
-		} );
-
-		return email.endsWith( productName );
-	}
-
-	nextStep = async ( closeDialog ) => {
+	nextStep = ( closeDialog ) => {
 		if ( this.props.isRemoving ) {
 			return;
 		}
 
-		const isEmailBasedOnDomain = await this.isWpComEmailBasedOnDomain();
+		const productName = getName( this.props.purchase );
+		const isEmailBasedOnDomain = this.props.userEmail.endsWith( productName );
 
 		switch ( this.state.step ) {
 			case 1:
@@ -201,9 +187,9 @@ class RemoveDomainDialog extends Component {
 		const productName = getName( purchase );
 
 		// To be removed once "Never mind" is translated; the typo has been fixed in existing translations.
-		const closeDialogString = hasTranslation( 'Nevermind' )
-			? translate( 'Nevermind' )
-			: translate( 'Never mind' );
+		const oldString = translate( 'Nevermind' );
+		const newString = translate( 'Never mind ' );
+		const closeDialogString = hasTranslation( 'Never mind' ) ? newString : oldString;
 
 		const buttons = [
 			{
@@ -262,6 +248,7 @@ export default connect( ( state, ownProps ) => {
 		isGravatarDomain: selectedDomain?.isGravatarDomain,
 		hasTitanWithUs: hasTitanMailWithUs( selectedDomain ),
 		currentRoute: getCurrentRoute( state ),
+		userEmail: getCurrentUserEmail( state ),
 		slug: getSiteSlug( state, ownProps.purchase.siteId ),
 	};
 } )( localize( RemoveDomainDialog ) );
