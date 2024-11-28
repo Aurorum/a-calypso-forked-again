@@ -257,7 +257,14 @@ export default function LicensePreview( {
 			>
 				<div>
 					<span className="license-preview__product">
-						{ productTitle }
+						<div className="license-preview__product-title">
+							{ productTitle }
+							{ isClientLicense && (
+								<Badge className="license-preview__client-badge" type="info">
+									{ translate( 'Referral' ) }
+								</Badge>
+							) }
+						</div>
 						{ isClientLicense && (
 							<div className="license-preview__client-email">
 								<ClientSite referral={ referral } />
@@ -371,6 +378,7 @@ export default function LicensePreview( {
 					{ isWPCOMLicense && isSiteAtomic ? (
 						<LicenseActions
 							siteUrl={ siteUrl }
+							isDevSite={ isDevelopmentSite }
 							attachedAt={ attachedAt }
 							revokedAt={ revokedAt }
 							licenseType={ licenseType }

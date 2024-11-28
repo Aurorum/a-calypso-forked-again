@@ -83,7 +83,7 @@ const usePricingMetaForGridPlans = ( {
 	// plans - should have a definition for all plans, being the main source of API data
 	const plans = Plans.usePlans( { coupon } );
 	// sitePlans - unclear if all plans are included
-	const sitePlans = Plans.useSitePlans( { siteId } );
+	const sitePlans = Plans.useSitePlans( { coupon, siteId } );
 	const currentPlan = Plans.useCurrentPlan( { siteId } );
 	const introOffers = Plans.useIntroOffers( { siteId, coupon } );
 	const purchasedPlan = Purchases.useSitePurchaseById( {
@@ -94,6 +94,7 @@ const usePricingMetaForGridPlans = ( {
 		( select ) => select( WpcomPlansUI.store ).getSelectedStorageOptions( siteId ),
 		[]
 	);
+
 	const planAvailabilityForPurchase = useCheckPlanAvailabilityForPurchase( {
 		planSlugs,
 		siteId,
@@ -112,6 +113,7 @@ const usePricingMetaForGridPlans = ( {
 					originalPrice: Plans.PlanPricing[ 'originalPrice' ];
 					discountedPrice: Plans.PlanPricing[ 'discountedPrice' ];
 					currencyCode: Plans.PlanPricing[ 'currencyCode' ];
+					introOffer: Plans.PlanPricing[ 'introOffer' ];
 				};
 		  }
 		| null = null;
@@ -136,6 +138,17 @@ const usePricingMetaForGridPlans = ( {
 					: null;
 				const storageAddOnPriceMonthly = selectedStorageAddOn?.prices?.monthlyPrice || 0;
 				const storageAddOnPriceYearly = selectedStorageAddOn?.prices?.yearlyPrice || 0;
+
+				const introOffer = introOffers?.[ planSlug ];
+
+				const introOfferPrice = introOffer
+					? ( {
+							monthly: introOffer.rawPrice.monthly + storageAddOnPriceMonthly,
+							full:
+								introOffer.rawPrice.full +
+								( 'year' === introOffer.intervalUnit ? storageAddOnPriceYearly : 0 ),
+					  } as const )
+					: undefined;
 
 				/**
 				 * 0. No plan or sitePlan (when selected site exists): planSlug is for a priceless plan.
@@ -214,7 +227,11 @@ const usePricingMetaForGridPlans = ( {
 					};
 
 					// Do not return discounted prices if discount is due to plan proration
+					// If there is, however, a sale coupon, show the discounted price
+					// without proration. This isn't ideal, but is intentional. Because of
+					// this, the price will differ between the plans grid and checkout screen.
 					if (
+						! sitePlan?.pricing?.hasSaleCoupon &&
 						! withProratedDiscounts &&
 						sitePlan?.pricing?.costOverrides?.[ 0 ]?.overrideCode ===
 							COST_OVERRIDE_REASONS.RECENT_PLAN_PRORATION
@@ -228,6 +245,12 @@ const usePricingMetaForGridPlans = ( {
 									full: null,
 								},
 								currencyCode: sitePlan?.pricing?.currencyCode,
+								...( sitePlan?.pricing.introOffer && {
+									introOffer: {
+										...sitePlan?.pricing.introOffer,
+										rawPrice: introOfferPrice,
+									},
+								} ),
 							},
 						];
 					}
@@ -246,6 +269,12 @@ const usePricingMetaForGridPlans = ( {
 							originalPrice,
 							discountedPrice,
 							currencyCode: sitePlan?.pricing?.currencyCode,
+							...( sitePlan?.pricing.introOffer && {
+								introOffer: {
+									...sitePlan?.pricing.introOffer,
+									rawPrice: introOfferPrice,
+								},
+							} ),
 						},
 					];
 				}
@@ -272,6 +301,12 @@ const usePricingMetaForGridPlans = ( {
 							originalPrice,
 							discountedPrice,
 							currencyCode: plan?.pricing?.currencyCode,
+							...( plan?.pricing.introOffer && {
+								introOffer: {
+									...plan?.pricing.introOffer,
+									rawPrice: introOfferPrice,
+								},
+							} ),
 						},
 					];
 				}
@@ -294,6 +329,12 @@ const usePricingMetaForGridPlans = ( {
 							full: null,
 						},
 						currencyCode: plan?.pricing?.currencyCode,
+						...( plan?.pricing.introOffer && {
+							introOffer: {
+								...plan?.pricing.introOffer,
+								rawPrice: introOfferPrice,
+							},
+						} ),
 					},
 				];
 			} )
@@ -314,7 +355,7 @@ const usePricingMetaForGridPlans = ( {
 					// TODO clk: the condition on `.pricing` here needs investigation. There should be a pricing object for all returned API plans.
 					currencyCode: planPrices?.[ planSlug ]?.currencyCode,
 					expiry: sitePlans.data?.[ planSlug ]?.expiry,
-					introOffer: introOffers?.[ planSlug ],
+					introOffer: planPrices?.[ planSlug ]?.introOffer,
 				},
 			} ),
 			{} as { [ planSlug in PlanSlug ]?: Plans.PricingMetaForGridPlan }

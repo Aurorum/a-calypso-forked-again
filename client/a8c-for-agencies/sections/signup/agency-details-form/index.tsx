@@ -5,10 +5,14 @@ import { useTranslate } from 'i18n-calypso';
 import { useCallback, useState, useMemo, ChangeEvent, useEffect } from 'react';
 import LayoutBanner from 'calypso/a8c-for-agencies/components/layout/banner';
 import TextPlaceholder from 'calypso/a8c-for-agencies/components/text-placeholder';
+import QuerySmsCountries from 'calypso/components/data/query-countries/sms';
 import FormFieldset from 'calypso/components/forms/form-fieldset';
+import FormPhoneInput from 'calypso/components/forms/form-phone-input';
 import FormSelect from 'calypso/components/forms/form-select';
 import FormTextInput from 'calypso/components/forms/form-text-input';
 import MultiCheckbox, { ChangeList } from 'calypso/components/forms/multi-checkbox';
+import { useGetSupportedSMSCountries } from 'calypso/jetpack-cloud/sections/agency-dashboard/downtime-monitoring/contact-editor/hooks';
+import { preventWidows } from 'calypso/lib/formatting';
 import { useDispatch } from 'calypso/state';
 import { recordTracksEvent } from 'calypso/state/analytics/actions';
 import { Option as CountryOption, useCountriesAndStates } from './hooks/use-countries-and-states';
@@ -56,12 +60,16 @@ export default function AgencyDetailsForm( {
 	const { countryOptions, stateOptionsMap } = useCountriesAndStates();
 	const showCountryFields = countryOptions.length > 0;
 
+	const countriesList = useGetSupportedSMSCountries();
+	const noCountryList = countriesList.length === 0;
+
 	const [ countryValue, setCountryValue ] = useState( initialValues?.country ?? '' );
 	const [ city, setCity ] = useState( initialValues?.city ?? '' );
 	const [ line1, setLine1 ] = useState( initialValues?.line1 ?? '' );
 	const [ line2, setLine2 ] = useState( initialValues?.line2 ?? '' );
 	const [ postalCode, setPostalCode ] = useState( initialValues?.postalCode ?? '' );
 	const [ addressState, setAddressState ] = useState( initialValues?.state ?? '' );
+	const [ phone, setPhone ] = useState( initialValues?.phone ?? {} );
 	const [ agencyName, setAgencyName ] = useState( initialValues?.agencyName ?? '' );
 	const [ firstName, setFirstName ] = useState( initialValues?.firstName ?? '' );
 	const [ lastName, setLastName ] = useState( initialValues?.lastName ?? '' );
@@ -98,6 +106,7 @@ export default function AgencyDetailsForm( {
 			postalCode,
 			state: addressState,
 			referer,
+			phone,
 			...( includeTermsOfService ? { tos: 'consented' } : {} ),
 		} ),
 		[
@@ -116,6 +125,7 @@ export default function AgencyDetailsForm( {
 			postalCode,
 			addressState,
 			referer,
+			phone,
 			includeTermsOfService,
 		]
 	);
@@ -183,6 +193,29 @@ export default function AgencyDetailsForm( {
 
 	const handleSetProductsOffered = ( products: ChangeList< string > ) => {
 		setProductsOffered( products.value );
+	};
+
+	const handlePhoneInputChange = ( {
+		phoneNumberFull,
+		phoneNumber,
+		countryData,
+	}: {
+		phoneNumberFull: string;
+		phoneNumber: string;
+		countryData: {
+			code: string;
+			numeric_code: string;
+		};
+		isValid: boolean;
+		validation: {
+			message: string;
+		};
+	} ) => {
+		setPhone( {
+			phoneNumber,
+			countryCode: countryData.code,
+			phoneNumberFull,
+		} );
 	};
 
 	const isUserSiteOwner = userType === 'site_owner';
@@ -355,7 +388,6 @@ export default function AgencyDetailsForm( {
 							/>
 						</FormFieldset>
 						<FormFieldset>
-							<FormLabel>{ translate( 'Country' ) }</FormLabel>
 							{ showCountryFields && (
 								<SearchableDropdown
 									value={ countryValue }
@@ -365,6 +397,7 @@ export default function AgencyDetailsForm( {
 									} }
 									options={ countryOptions }
 									disabled={ isLoading }
+									label={ translate( 'Country' ) }
 								/>
 							) }
 
@@ -380,13 +413,13 @@ export default function AgencyDetailsForm( {
 						</FormFieldset>
 						{ showCountryFields && stateOptions && (
 							<FormFieldset>
-								<FormLabel>{ translate( 'State' ) }</FormLabel>
 								<SearchableDropdown
 									value={ addressState }
 									onChange={ ( value ) => setAddressState( value ?? '' ) }
 									options={ stateOptions }
 									disabled={ isLoading }
 									allowReset={ false }
+									label={ translate( 'State' ) }
 								/>
 							</FormFieldset>
 						) }
@@ -458,6 +491,25 @@ export default function AgencyDetailsForm( {
 								disabled={ isLoading }
 							/>
 						</FormFieldset>
+
+						{ noCountryList && <QuerySmsCountries /> }
+						<FormFieldset>
+							<FormLabel optional>{ translate( 'Phone number' ) }</FormLabel>
+							<FormPhoneInput
+								countrySelectProps={ {
+									'data-testid': 'a4a-signup-country-code-select',
+								} }
+								phoneInputProps={ {
+									'data-testid': 'a4a-signup-phone-number-input',
+								} }
+								isDisabled={ noCountryList }
+								countriesList={ countriesList }
+								initialCountryCode={ phone.countryCode }
+								initialPhoneNumber={ phone.phoneNumber }
+								onChange={ handlePhoneInputChange }
+								className="company-details-form__phone-input"
+							/>
+						</FormFieldset>
 						{ includeTermsOfService && (
 							<div className="company-details-form__tos">
 								<p>
@@ -498,12 +550,27 @@ export default function AgencyDetailsForm( {
 					<LayoutBanner
 						hideCloseButton
 						level="warning"
-						title={ translate( 'Unable to Proceed with Application' ) }
+						title={ preventWidows(
+							translate( 'It seems like we might not be the perfect match right now.' )
+						) }
 					>
 						<div>
-							{ translate(
-								'Automattic for Agencies is a program designed for agencies, developers, and freelancers who work with and provide services to their clients.' +
-									' Thank you for your interest, but we will not be progressing your application now. If you chose this option in error, please select the appropriate option from the list.'
+							{ preventWidows(
+								translate(
+									'Automattic for Agencies is a program designed for agencies, developers, and freelancers who work with and provide services to their clients.' +
+										" Depending on what you are looking for, you may want to check out one of our individual products, like {{wp}}WordPress.com{{/wp}}, {{pressable}}Pressable.com{{/pressable}}, {{woo}}Woo.com{{/woo}}, {{jetpack}}Jetpack.com{{/jetpack}}. If you really aren't sure where to go, feel free to contact us at {{email}}partnerships@automattic.com{{/email}} and we'll point you in the right direction.",
+									{
+										components: {
+											wp: <a href="https://wordpress.com" target="_blank" rel="noreferrer" />,
+											pressable: (
+												<a href="https://pressable.com" target="_blank" rel="noreferrer" />
+											),
+											woo: <a href="https://woocommerce.com" target="_blank" rel="noreferrer" />,
+											jetpack: <a href="https://jetpack.com" target="_blank" rel="noreferrer" />,
+											email: <a href="mailto:partnerships@automattic.com" />,
+										},
+									}
+								)
 							) }
 						</div>
 					</LayoutBanner>

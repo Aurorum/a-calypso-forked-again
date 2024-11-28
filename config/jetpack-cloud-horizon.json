@@ -31,6 +31,7 @@
 		"checkout/ebanx-pix": true,
 		"checkout/google-pay": true,
 		"checkout/vat-form": true,
+		"checkout/paypal-ppcp": true,
 		"checkout/checkout-version": false,
 		"checkout/razorpay": false,
 		"current-site/domain-warning": false,
@@ -41,6 +42,7 @@
 		"jetpack/backup-messaging-i3": true,
 		"jetpack/backup-restore-preflight-checks": true,
 		"jetpack/backup-retention-settings": true,
+		"jetpack/backup-schedule-setting": true,
 		"jetpack/card-addition-improvements": true,
 		"jetpack/golden-token": false,
 		"jetpack/plugin-management": true,
@@ -74,7 +76,8 @@
 		"subscriber-csv-upload": true,
 		"upgrades/redirect-payments": true,
 		"jetpack/pricing-page-cart": true,
-		"yolo/command-palette": false
+		"yolo/command-palette": false,
+		"bulk-plugin-management": true
 	},
 	"enable_all_sections": false,
 	"sections": {

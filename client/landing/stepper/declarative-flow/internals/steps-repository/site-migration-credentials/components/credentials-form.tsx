@@ -1,10 +1,12 @@
-import { useIsEnglishLocale } from '@automattic/i18n-utils';
+import { isEnabled } from '@automattic/calypso-config';
 import { NextButton } from '@automattic/onboarding';
 import { useTranslate } from 'i18n-calypso';
 import { FC } from 'react';
+import { UrlData } from 'calypso/blocks/import/types';
 import Notice from 'calypso/components/notice';
 import { useQuery } from 'calypso/landing/stepper/hooks/use-query';
 import { useCredentialsForm } from '../hooks/use-credentials-form';
+import { ApplicationPasswordsInfo } from '../types';
 import { AccessMethodPicker } from './access-method-picker';
 import { BackupFileField } from './backup-file-field';
 import { ErrorMessage } from './error-message';
@@ -14,36 +16,46 @@ import { SpecialInstructions } from './special-instructions';
 import { UsernameField } from './username-field';
 
 interface CredentialsFormProps {
-	onSubmit: () => void;
+	onSubmit: (
+		siteInfo?: UrlData | undefined,
+		applicationPasswordsInfo?: ApplicationPasswordsInfo
+	) => void;
 	onSkip: () => void;
 }
 
 export const CredentialsForm: FC< CredentialsFormProps > = ( { onSubmit, onSkip } ) => {
 	const translate = useTranslate();
-	const isEnglishLocale = useIsEnglishLocale();
-	const {
-		handleSubmit,
-		control,
-		errors,
-		accessMethod,
-		isPending,
-		submitHandler,
-		importSiteQueryParam,
-		getContinueButtonText,
-	} = useCredentialsForm( onSubmit );
+	const { control, errors, accessMethod, isBusy, submitHandler, canBypassVerification } =
+		useCredentialsForm( onSubmit );
 
 	const queryError = useQuery().get( 'error' ) || null;
 
+	const applicationPasswordEnabled = isEnabled( 'automated-migration/application-password' );
+
 	let errorMessage;
-	if ( isEnglishLocale && errors.root && errors.root.type !== 'manual' && errors.root.message ) {
+	if ( errors.root && errors.root.type !== 'manual' && errors.root.message ) {
 		errorMessage = errors.root.message;
 	} else if ( queryError === 'ticket-creation' ) {
 		errorMessage = translate(
 			'We ran into a problem submitting your details. Please try again shortly.'
 		);
 	}
+
+	const getContinueButtonText = () => {
+		if ( isBusy && ! canBypassVerification ) {
+			return translate( 'Verifying credentials' );
+		}
+		if ( canBypassVerification ) {
+			return translate( 'Continue anyways' );
+		}
+
+		return translate( 'Continue' );
+	};
+
+	const showSpecialInstructions = ! applicationPasswordEnabled || accessMethod === 'backup';
+
 	return (
-		<form className="site-migration-credentials__form" onSubmit={ handleSubmit( submitHandler ) }>
+		<form className="site-migration-credentials__form" onSubmit={ submitHandler }>
 			{ errorMessage && (
 				<Notice
 					className="site-migration-credentials__error-notice"
@@ -60,26 +72,26 @@ export const CredentialsForm: FC< CredentialsFormProps > = ( { onSubmit, onSkip 
 
 				{ accessMethod === 'credentials' && (
 					<div className="site-migration-credentials">
-						<SiteAddressField
-							control={ control }
-							errors={ errors }
-							importSiteQueryParam={ importSiteQueryParam }
-						/>
-						<UsernameField control={ control } errors={ errors } />
-						<PasswordField control={ control } errors={ errors } />
+						<SiteAddressField control={ control } errors={ errors } />
+						{ ! applicationPasswordEnabled && (
+							<>
+								<UsernameField control={ control } errors={ errors } />
+								<PasswordField control={ control } errors={ errors } />
+							</>
+						) }
 					</div>
 				) }
 
 				{ accessMethod === 'backup' && <BackupFileField control={ control } errors={ errors } /> }
 
-				<SpecialInstructions control={ control } errors={ errors } />
+				{ showSpecialInstructions && <SpecialInstructions control={ control } errors={ errors } /> }
 
 				<ErrorMessage
 					error={ errors.root && errors.root.type === 'manual' ? errors.root : undefined }
 				/>
 
 				<div className="site-migration-credentials__submit">
-					<NextButton disabled={ isPending } type="submit">
+					<NextButton disabled={ isBusy } type="submit">
 						{ getContinueButtonText() }
 					</NextButton>
 				</div>
@@ -88,13 +100,10 @@ export const CredentialsForm: FC< CredentialsFormProps > = ( { onSubmit, onSkip 
 			<div className="site-migration-credentials__skip">
 				<button
 					className="button navigation-link step-container__navigation-link has-underline is-borderless"
-					disabled={ isPending }
 					onClick={ onSkip }
 					type="button"
 				>
-					{ isEnglishLocale
-						? translate( 'I need help, please contact me' )
-						: translate( 'Skip, I need help providing access' ) }
+					{ translate( 'I need help, please contact me' ) }
 				</button>
 			</div>
 		</form>

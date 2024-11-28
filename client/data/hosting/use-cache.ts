@@ -7,10 +7,10 @@ import {
 } from '@tanstack/react-query';
 import { useI18n } from '@wordpress/react-i18n';
 import { useTranslate } from 'i18n-calypso';
-import { useCallback } from 'react';
+import { useCallback, useEffect } from 'react';
 import wp from 'calypso/lib/wp';
 import { useDispatch } from 'calypso/state';
-import { successNotice, errorNotice, plainNotice } from 'calypso/state/notices/actions';
+import { successNotice, errorNotice, infoNotice } from 'calypso/state/notices/actions';
 
 export const EDGE_CACHE_ENABLE_DISABLE_NOTICE_ID = 'edge-cache-enable-disable-notice';
 export const USE_EDGE_CACHE_QUERY_KEY = 'edge-cache-key';
@@ -130,9 +130,11 @@ export const useSetEdgeCacheMutation = (
 	const setEdgeCache = useCallback(
 		( siteId: number | null, active: boolean ) => {
 			dispatch(
-				plainNotice( active ? __( 'Enabling edge cache…' ) : __( 'Disabling edge cache…' ), {
+				infoNotice( active ? __( 'Enabling edge cache…' ) : __( 'Disabling edge cache…' ), {
 					duration: 5000,
 					id: EDGE_CACHE_ENABLE_DISABLE_NOTICE_ID,
+					isLoading: true,
+					icon: 'ellipsis',
 				} )
 			);
 
@@ -180,10 +182,11 @@ function getEdgeCacheDefensiveModeQueryKey( siteId: number | null ) {
 type EdgeCacheDefensiveModeQueryData = {
 	enabled: boolean;
 	enabled_until: number;
+	enabled_by_a11n: boolean;
 };
 
 export function useEdgeCacheDefensiveModeQuery( siteId: number | null ) {
-	return useQuery< EdgeCacheDefensiveModeQueryData >( {
+	const query = useQuery< EdgeCacheDefensiveModeQueryData >( {
 		queryKey: getEdgeCacheDefensiveModeQueryKey( siteId ),
 		queryFn: () =>
 			wp.req.get( {
@@ -192,6 +195,28 @@ export function useEdgeCacheDefensiveModeQuery( siteId: number | null ) {
 			} ),
 		enabled: siteId !== null,
 	} );
+
+	const { data, refetch } = query;
+	const enabled = data?.enabled ?? false;
+	const enabledUntil = data?.enabled_until ?? 0;
+
+	// If defensive mode is enabled, refetch the query ten seconds after the `enabled_util`
+	// timestamp
+	useEffect( () => {
+		if ( ! enabled ) {
+			return;
+		}
+
+		const delayUntilDefensiveModeEnds = enabledUntil * 1000 - Date.now();
+		const delayUntilRefetch = Math.max( 0, delayUntilDefensiveModeEnds ) + 10000;
+		const timeoutId = setTimeout( () => refetch(), delayUntilRefetch );
+
+		return () => {
+			clearTimeout( timeoutId );
+		};
+	}, [ enabled, enabledUntil, refetch ] );
+
+	return query;
 }
 
 type EdgeCacheDefensiveModeMutationVariables = { active: true; ttl: number } | { active: false };

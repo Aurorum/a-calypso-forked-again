@@ -5,7 +5,7 @@ import { useSelect, useDispatch } from '@wordpress/data';
 import { useEffect } from 'react';
 import wpcomRequest from 'wpcom-proxy-request';
 import { isTargetSitePlanCompatible } from 'calypso/blocks/importer/util';
-import { useIsSiteAssemblerEnabledExp } from 'calypso/data/site-assembler';
+import { useIsSiteAssemblerEnabled } from 'calypso/data/site-assembler';
 import { useIsBigSkyEligible } from 'calypso/landing/stepper/hooks/use-is-site-big-sky-eligible';
 import { useQuery } from 'calypso/landing/stepper/hooks/use-query';
 import { useExperiment } from 'calypso/lib/explat';
@@ -20,11 +20,7 @@ import { useSiteData } from '../hooks/use-site-data';
 import { useCanUserManageOptions } from '../hooks/use-user-can-manage-options';
 import { ONBOARD_STORE, SITE_STORE, USER_STORE, STEPPER_INTERNAL_STORE } from '../stores';
 import { shouldRedirectToSiteMigration } from './helpers';
-import {
-	useLaunchpadDecider,
-	getLaunchpadStateBasedOnExperiment,
-	LAUNCHPAD_EXPERIMENT_NAME,
-} from './internals/hooks/use-launchpad-decider';
+import { useLaunchpadDecider } from './internals/hooks/use-launchpad-decider';
 import { STEPS } from './internals/steps';
 import { redirect } from './internals/steps-repository/import/util';
 import { ProcessingResult } from './internals/steps-repository/processing-step/constants';
@@ -100,6 +96,12 @@ const siteSetupFlow: Flow = {
 		];
 	},
 	useStepNavigation( currentStep, navigate ) {
+		const [ , experimentAssignment ] = useExperiment( 'calypso_onboarding_goals_holdout_20241126', {
+			// Hold off assigning user to group until it's absolutely necessary
+			isEligible: [ 'goals', 'designSetup' ].includes( currentStep ),
+		} );
+		const isGoalsHoldout = experimentAssignment?.variationName === 'holdout';
+
 		const stepData = useSelect(
 			( select ) => ( select( STEPPER_INTERNAL_STORE ) as StepperInternalSelect ).getStepData(),
 			[]
@@ -155,20 +157,16 @@ const siteSetupFlow: Flow = {
 			[]
 		);
 
-		const isSiteAssemblerEnabled = useIsSiteAssemblerEnabledExp( 'design-choices' );
+		const isSiteAssemblerEnabled = useIsSiteAssemblerEnabled();
 
 		const { isEligible: isBigSkyEligible } = useIsBigSkyEligible();
 
 		const isDesignChoicesStepEnabled =
 			( isAssemblerSupported() && isSiteAssemblerEnabled ) || isBigSkyEligible;
 
-		const { setPendingAction, resetOnboardStoreWithSkipFlags, setIntent } =
-			useDispatch( ONBOARD_STORE );
+		const { setPendingAction, resetOnboardStoreWithSkipFlags } = useDispatch( ONBOARD_STORE );
 		const { setDesignOnSite } = useDispatch( SITE_STORE );
 		const dispatch = reduxDispatch();
-
-		const [ isLoadingLaunchpadExperiment, launchpadExperimentAssigment ] =
-			useExperiment( LAUNCHPAD_EXPERIMENT_NAME );
 
 		const getLaunchpadScreenValue = (
 			intent: string,
@@ -178,17 +176,6 @@ const siteSetupFlow: Flow = {
 				return 'off';
 			}
 
-			const launchpadState = getLaunchpadStateBasedOnExperiment(
-				isLoadingLaunchpadExperiment,
-				launchpadExperimentAssigment,
-				shouldSkip
-			);
-
-			if ( launchpadState ) {
-				return launchpadState;
-			}
-
-			// We shouldn't get here, but match the default/existing behaviour
 			if ( shouldSkip ) {
 				return 'skipped';
 			}
@@ -325,7 +312,7 @@ const siteSetupFlow: Flow = {
 					}
 
 					// If the user skips starting point, redirect them to the post editor
-					if ( intent === 'write' && startingPoint !== 'skip-to-my-home' ) {
+					if ( isGoalsHoldout && intent === 'write' && startingPoint !== 'skip-to-my-home' ) {
 						if ( startingPoint !== 'write' ) {
 							window.sessionStorage.setItem( 'wpcom_signup_complete_show_draft_post_modal', '1' );
 						}
@@ -383,7 +370,13 @@ const siteSetupFlow: Flow = {
 				}
 
 				case 'goals': {
-					const { intent } = providedDependencies;
+					const { intent, skip } = providedDependencies;
+
+					if ( skip ) {
+						return exitFlow( `/home/${ siteId ?? siteSlug }`, {
+							skipLaunchpad: true,
+						} );
+					}
 
 					switch ( intent ) {
 						case SiteIntent.Import:
@@ -391,9 +384,13 @@ const siteSetupFlow: Flow = {
 
 						case SiteIntent.DIFM:
 							return navigate( 'difmStartingPoint' );
+
 						case SiteIntent.Write:
 						case SiteIntent.Sell:
-							return navigate( 'options' );
+							// If we're not in the holdout, intentionally fall through to the default case
+							if ( isGoalsHoldout ) {
+								return navigate( 'options' );
+							}
 						default: {
 							if ( isDesignChoicesStepEnabled ) {
 								return navigate( 'design-choices' );
@@ -538,10 +535,12 @@ const siteSetupFlow: Flow = {
 					switch ( intent ) {
 						case SiteIntent.DIFM:
 							return navigate( 'difmStartingPoint' );
-						case SiteIntent.Sell:
-							return navigate( 'options' );
 						case SiteIntent.Write:
-							return navigate( 'bloggerStartingPoint' );
+						case SiteIntent.Sell:
+							// If we're not in the holdout, intentionally fall through to the default case
+							if ( isGoalsHoldout ) {
+								return navigate( 'options' );
+							}
 						default: {
 							if ( isDesignChoicesStepEnabled ) {
 								return navigate( 'design-choices' );
@@ -645,13 +644,6 @@ const siteSetupFlow: Flow = {
 
 				case 'intent':
 					return exitFlow( `/home/${ siteId ?? siteSlug }` );
-
-				case 'goals':
-					// Skip to dashboard must have been pressed
-					setIntent( SiteIntent.Build );
-					return exitFlow( `/home/${ siteId ?? siteSlug }`, {
-						skipLaunchpad: true,
-					} );
 
 				case 'import':
 					return navigate( 'importList' );
