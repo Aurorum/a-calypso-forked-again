@@ -188,7 +188,7 @@ class RemoveDomainDialog extends Component {
 
 		// To be removed once "Never mind" is translated; the typo has been fixed in existing translations.
 		const oldString = translate( 'Nevermind' );
-		const newString = translate( 'Never mind ' );
+		const newString = translate( 'Never mind' );
 		const closeDialogString = hasTranslation( 'Never mind' ) ? newString : oldString;
 
 		const buttons = [
