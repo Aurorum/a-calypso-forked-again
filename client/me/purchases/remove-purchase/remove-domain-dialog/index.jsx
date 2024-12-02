@@ -1,5 +1,4 @@
 import { Dialog, FormLabel } from '@automattic/components';
-import { hasTranslation } from '@wordpress/i18n';
 import { localize } from 'i18n-calypso';
 import PropTypes from 'prop-types';
 import { Component, Fragment } from 'react';
@@ -186,16 +185,11 @@ class RemoveDomainDialog extends Component {
 		const { purchase, translate, chatButton } = this.props;
 		const productName = getName( purchase );
 
-		// To be removed once "Never mind" is translated; the typo has been fixed in existing translations.
-		const oldString = translate( 'Nevermind' );
-		const newString = translate( 'Never mind' );
-		const closeDialogString = hasTranslation( 'Never mind' ) ? newString : oldString;
-
 		const buttons = [
 			{
 				action: 'cancel',
 				disabled: this.props.isRemoving,
-				label: this.state.step === 3 ? closeDialogString : translate( 'Cancel' ),
+				label: this.state.step === 3 ? translate( 'Never mind' ) : translate( 'Cancel' ),
 			},
 			...( this.state.step !== 2
 				? [
