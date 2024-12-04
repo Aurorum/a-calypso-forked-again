@@ -32,10 +32,11 @@ export default function SiteStatusContent( {
 	// Disable clicks/hover when there is a site error &
 	// when the row is not monitor and monitor status is down
 	// since monitor is clickable when site is down.
-	const disabledStatus = siteError || ( type !== 'monitor' && siteDown );
+	const disabledStatus =
+		siteError || ( type !== 'monitor' && siteDown ) || rows.site.value.is_simple;
 
-	// Disable selection and toggle when there is a site error or site is down
-	const hasAnyError = !! ( siteError || siteDown );
+	// Disable selection and toggle when there is a site error, site is down or site is simple provisioning
+	const hasAnyError = !! ( siteError || siteDown || rows.site.value.is_simple );
 
 	if ( type === 'site' ) {
 		return (
@@ -66,7 +67,13 @@ export default function SiteStatusContent( {
 	}
 
 	if ( type === 'stats' ) {
-		return <SiteStatsColumn site={ rows.site.value } stats={ rows.stats.value } />;
+		return (
+			<SiteStatsColumn
+				site={ rows.site.value }
+				stats={ rows.stats.value }
+				siteError={ hasAnyError }
+			/>
+		);
 	}
 
 	// We will show a progress icon when the site score is being fetched.

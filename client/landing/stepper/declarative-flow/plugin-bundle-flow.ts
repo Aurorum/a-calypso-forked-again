@@ -10,7 +10,6 @@ import { useSitePluginSlug } from '../hooks/use-site-plugin-slug';
 import { useSiteSlugParam } from '../hooks/use-site-slug-param';
 import { useCanUserManageOptions } from '../hooks/use-user-can-manage-options';
 import { ONBOARD_STORE, SITE_STORE, USER_STORE } from '../stores';
-import { recordSubmitStep } from './internals/analytics/record-submit-step';
 import { redirect } from './internals/steps-repository/import/util';
 import { ProcessingResult } from './internals/steps-repository/processing-step/constants';
 import {
@@ -28,9 +27,10 @@ import {
 } from './plugin-bundle-data';
 import type { OnboardSelect, SiteSelect, UserSelect } from '@automattic/data-stores';
 
-const getNextStep = ( currentStep: string, steps: string[] ): string | undefined => {
-	const currentStepIndex = steps.indexOf( currentStep );
-	const nextStep = steps[ currentStepIndex + 1 ];
+const getNextStep = ( currentStep: string, steps: StepperStep[] ): string | undefined => {
+	const stepsIndex = steps.map( ( step ) => step.slug );
+	const currentStepIndex = stepsIndex.indexOf( currentStep );
+	const nextStep = stepsIndex[ currentStepIndex + 1 ];
 
 	return nextStep;
 };
@@ -55,8 +55,8 @@ const pluginBundleFlow: Flow = {
 		}
 		return [ ...initialBundleSteps, ...bundlePluginSteps ];
 	},
-	useStepNavigation( currentStep, navigate, steps = [] ) {
-		const flowName = this.name;
+	useStepNavigation( currentStep, navigate ) {
+		const steps = this.useSteps();
 		const intent = useSelect(
 			( select ) => ( select( ONBOARD_STORE ) as OnboardSelect ).getIntent(),
 			[]
@@ -144,9 +144,8 @@ const pluginBundleFlow: Flow = {
 		};
 
 		function submit( providedDependencies: ProvidedDependencies = {}, ...params: string[] ) {
-			recordSubmitStep( providedDependencies, intent, flowName, currentStep );
-
 			let defaultExitDest = `/home/${ siteSlug }`;
+
 			if ( siteDetails?.options?.theme_slug ) {
 				const themeId = getThemeIdFromStylesheet( siteDetails?.options?.theme_slug );
 				if ( isEnabled( 'themes/display-thank-you-page-for-bundle' ) ) {

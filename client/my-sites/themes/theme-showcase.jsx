@@ -5,10 +5,11 @@ import page from '@automattic/calypso-router';
 import { SelectDropdown } from '@automattic/components';
 import { isAssemblerSupported } from '@automattic/design-picker';
 import clsx from 'clsx';
-import { localize, translate } from 'i18n-calypso';
+import { localize } from 'i18n-calypso';
 import { compact, pickBy } from 'lodash';
 import PropTypes from 'prop-types';
 import { createRef, Component } from 'react';
+import { InView } from 'react-intersection-observer';
 import { connect } from 'react-redux';
 import AsyncLoad from 'calypso/components/async-load';
 import QueryProductsList from 'calypso/components/data/query-products-list';
@@ -27,7 +28,6 @@ import { THEME_COLLECTIONS } from 'calypso/my-sites/themes/collections/collectio
 import ShowcaseThemeCollection from 'calypso/my-sites/themes/collections/showcase-theme-collection';
 import ThemeCollectionViewHeader from 'calypso/my-sites/themes/collections/theme-collection-view-header';
 import ThemeShowcaseSurvey from 'calypso/my-sites/themes/survey';
-import ThanksModal from 'calypso/my-sites/themes/thanks-modal';
 import { getCurrentUserSiteCount, isUserLoggedIn } from 'calypso/state/current-user/selectors';
 import getLastNonEditorRoute from 'calypso/state/selectors/get-last-non-editor-route';
 import getSiteEditorUrl from 'calypso/state/selectors/get-site-editor-url';
@@ -58,6 +58,7 @@ import {
 	shouldSelectSite,
 } from './helpers';
 import PatternAssemblerButton from './pattern-assembler-button';
+import ThemeErrors from './theme-errors';
 import ThemePreview from './theme-preview';
 import ThemeShowcaseHeader from './theme-showcase-header';
 import ThemesSelection from './themes-selection';
@@ -71,35 +72,18 @@ const optionShape = PropTypes.shape( {
 	action: PropTypes.func,
 } );
 
-const staticFilters = {
-	MYTHEMES: {
-		key: STATIC_FILTERS.MYTHEMES,
-		text: translate( 'My Themes' ),
-	},
-	RECOMMENDED: {
-		key: STATIC_FILTERS.RECOMMENDED,
-		text: translate( 'Recommended' ),
-	},
-	ALL: {
-		key: STATIC_FILTERS.ALL,
-		text: translate( 'All' ),
-	},
-};
-
-const defaultStaticFilter = Object.values( staticFilters ).find(
-	( staticFilter ) => staticFilter.key === DEFAULT_STATIC_FILTER
-);
-
 class ThemeShowcase extends Component {
 	state = {
 		isDesignThemeModalVisible: false,
 		isSiteSelectorModalVisible: false,
+		shouldThemeControlsSticky: false,
 	};
 
 	constructor( props ) {
 		super( props );
 		this.scrollRef = createRef();
 		this.bookmarkRef = createRef();
+		this.showcaseRef = createRef();
 
 		this.subjectFilters = this.getSubjectFilters( props );
 		this.subjectTermTable = getSubjectsFromTermTable( props.filterToTermTable );
@@ -168,7 +152,28 @@ class ThemeShowcase extends Component {
 
 	isThemeDiscoveryEnabled = () => config.isEnabled( 'themes/discovery' );
 
-	getDefaultStaticFilter = () => defaultStaticFilter;
+	getStaticFilters() {
+		const { translate } = this.props;
+		return {
+			MYTHEMES: {
+				key: STATIC_FILTERS.MYTHEMES,
+				text: translate( 'My Themes' ),
+			},
+			RECOMMENDED: {
+				key: STATIC_FILTERS.RECOMMENDED,
+				text: translate( 'Recommended' ),
+			},
+			ALL: {
+				key: STATIC_FILTERS.ALL,
+				text: translate( 'All' ),
+			},
+		};
+	}
+
+	getDefaultStaticFilter = () =>
+		Object.values( this.getStaticFilters() ).find(
+			( staticFilter ) => staticFilter.key === DEFAULT_STATIC_FILTER
+		);
 
 	isStaticFilter = ( tabFilter ) => isStaticFilter( tabFilter.key );
 
@@ -180,6 +185,8 @@ class ThemeShowcase extends Component {
 	};
 
 	getTabFilters = () => {
+		const { translate } = this.props;
+		const staticFilters = this.getStaticFilters();
 		if ( this.props.siteId && ! this.props.areSiteFeaturesLoaded ) {
 			return null;
 		}
@@ -205,7 +212,7 @@ class ThemeShowcase extends Component {
 	};
 
 	getTiers = () => {
-		const { themeTiers } = this.props;
+		const { themeTiers, translate } = this.props;
 
 		const tiers = Object.keys( themeTiers ).reduce( ( availableTiers, tier ) => {
 			if ( ! THEME_TIERS[ tier ]?.isFilterable ) {
@@ -230,6 +237,7 @@ class ThemeShowcase extends Component {
 	getSelectedTabFilter = () => {
 		const filter = this.props.filter ?? '';
 		const filterArray = filter.split( '+' );
+		const staticFilters = this.getStaticFilters();
 		const matches = Object.values( this.subjectTermTable ).filter( ( value ) =>
 			filterArray.includes( value )
 		);
@@ -243,6 +251,14 @@ class ThemeShowcase extends Component {
 	};
 
 	scrollToSearchInput = () => {
+		// Scroll to the top of the showcase
+		if ( this.showcaseRef.current && this.state.shouldThemeControlsSticky ) {
+			this.showcaseRef.current.scrollIntoView( {
+				behavior: 'instant',
+				block: 'start',
+			} );
+		}
+
 		let y = 0;
 
 		if ( ! this.props.loggedOutComponent && this.scrollRef && this.scrollRef.current ) {
@@ -269,6 +285,7 @@ class ThemeShowcase extends Component {
 	doSearch = ( searchBoxContent ) => {
 		const filterRegex = /([\w-]*):([\w-]*)/g;
 		const { filterToTermTable, subjectStringFilter, isSearchV2 } = this.props;
+		const staticFilters = this.getStaticFilters();
 
 		const filters =
 			`${ searchBoxContent } ${ isSearchV2 ? subjectStringFilter : '' }`.match( filterRegex ) || [];
@@ -322,6 +339,7 @@ class ThemeShowcase extends Component {
 		const category = tier !== 'all' && ! this.props.category ? '' : this.props.category;
 		const showCollection =
 			this.isThemeDiscoveryEnabled() && ! this.props.filterString && ! category && tier !== 'all';
+		const staticFilters = this.getStaticFilters();
 
 		const url = this.constructUrl( {
 			tier,
@@ -342,6 +360,7 @@ class ThemeShowcase extends Component {
 		recordTracksEvent( 'calypso_themeshowcase_filter_category_click', { category: tabFilter.key } );
 		trackClick( 'section nav filter', tabFilter );
 
+		const staticFilters = this.getStaticFilters();
 		const { filter = '', filterToTermTable } = this.props;
 		const subjectFilters = Object.values( this.subjectTermTable );
 		const filterWithoutSubjects = filter
@@ -544,6 +563,7 @@ class ThemeShowcase extends Component {
 
 	renderThemes = ( themeProps ) => {
 		const tabKey = this.getSelectedTabFilter().key;
+		const staticFilters = this.getStaticFilters();
 
 		switch ( tabKey ) {
 			case staticFilters.MYTHEMES?.key:
@@ -591,6 +611,10 @@ class ThemeShowcase extends Component {
 		window.scrollTo( { top: 0 } );
 	};
 
+	onShouldThemeControlsStickyChange = ( inView ) => {
+		this.setState( { shouldThemeControlsSticky: this.props.isLoggedIn && ! inView } );
+	};
+
 	render() {
 		const {
 			siteId,
@@ -602,6 +626,7 @@ class ThemeShowcase extends Component {
 			pathName,
 			featureStringFilter,
 			filterString,
+			isJetpackSite,
 			isMultisite,
 			premiumThemesEnabled,
 			isSiteECommerceFreeTrial,
@@ -609,9 +634,11 @@ class ThemeShowcase extends Component {
 			isSiteWooExpress,
 			isCollectionView,
 			lastNonEditorRoute,
+			translate,
 		} = this.props;
 		const tier = this.props.tier || 'all';
 		const canonicalUrl = 'https://wordpress.com' + pathName;
+		const staticFilters = this.getStaticFilters();
 
 		const themeProps = {
 			forceWpOrgSearch: true,
@@ -648,6 +675,9 @@ class ThemeShowcase extends Component {
 			'is-collection-view': isCollectionView,
 		} );
 
+		const showThemeErrors =
+			siteId && this.props.category === staticFilters.MYTHEMES.key && isJetpackSite;
+
 		return (
 			<div className={ classnames }>
 				<PageViewTracker
@@ -676,57 +706,80 @@ class ThemeShowcase extends Component {
 						<div className="themes__showcase">{ this.renderBanner() }</div>
 					) }
 					{ ! isCollectionView && (
-						<div className="themes__controls">
-							<div className="theme__search">
-								<div className="theme__search-input">
-									{ isSearchV2 ? (
-										<SearchThemesV2
-											query={ featureStringFilter + search }
-											onSearch={ this.doSearch }
-										/>
-									) : (
-										<SearchThemes
-											query={ filterString + search }
-											onSearch={ this.doSearch }
-											recordTracksEvent={ this.recordSearchThemesTracksEvent }
-										/>
-									) }
-								</div>
-								{ tabFilters && premiumThemesEnabled && ! isMultisite && (
-									<>
-										<SelectDropdown
-											className="section-nav-tabs__dropdown"
-											onSelect={ this.onTierSelectFilter }
-											selectedText={ translate( 'View: %s', {
-												args: getOptionLabel( tiers, tier ) || '',
-											} ) }
-											options={ tiers }
-											initialSelected={ tier }
-										></SelectDropdown>
-									</>
-								) }
-							</div>
+						<>
+							{ isLoggedIn && (
+								<InView
+									rootMargin="-32px 0px 0px 0px"
+									threshold={ 1 }
+									fallbackInView
+									onChange={ this.onShouldThemeControlsStickyChange }
+								>
+									<div
+										className={ clsx( 'themes__controls-placeholder', {
+											'is-sticky': this.state.shouldThemeControlsSticky,
+										} ) }
+										ref={ this.showcaseRef }
+									/>
+								</InView>
+							) }
 							<div
-								className={ clsx( 'themes__filters', {
-									'is-woo-express': isSiteWooExpress,
+								className={ clsx( 'themes__controls', {
+									'is-sticky': this.state.shouldThemeControlsSticky,
 								} ) }
 							>
-								{ tabFilters && ! isSiteECommerceFreeTrial && (
-									<ThemesToolbarGroup
-										items={ Object.values( tabFilters ) }
-										selectedKey={ this.getSelectedTabFilter().key }
-										onSelect={ ( key ) =>
-											this.onFilterClick(
-												Object.values( tabFilters ).find( ( tabFilter ) => tabFilter.key === key )
-											)
-										}
-									/>
-								) }
-								{ ! isLoggedIn && tabFilters && (
-									<PatternAssemblerButton onClick={ this.onDesignYourOwnClick } />
-								) }
+								<div className="theme__search-container">
+									<div className="theme__search">
+										<div className="theme__search-input">
+											{ isSearchV2 ? (
+												<SearchThemesV2
+													query={ featureStringFilter + search }
+													onSearch={ this.doSearch }
+												/>
+											) : (
+												<SearchThemes
+													query={ filterString + search }
+													onSearch={ this.doSearch }
+													recordTracksEvent={ this.recordSearchThemesTracksEvent }
+												/>
+											) }
+										</div>
+										{ tabFilters && premiumThemesEnabled && ! isMultisite && (
+											<>
+												<SelectDropdown
+													className="section-nav-tabs__dropdown"
+													onSelect={ this.onTierSelectFilter }
+													selectedText={ translate( 'View: %s', {
+														args: getOptionLabel( tiers, tier ) || '',
+													} ) }
+													options={ tiers }
+													initialSelected={ tier }
+												></SelectDropdown>
+											</>
+										) }
+									</div>
+								</div>
+								<div
+									className={ clsx( 'themes__filters', {
+										'is-woo-express': isSiteWooExpress,
+									} ) }
+								>
+									{ tabFilters && ! isSiteECommerceFreeTrial && (
+										<ThemesToolbarGroup
+											items={ Object.values( tabFilters ) }
+											selectedKey={ this.getSelectedTabFilter().key }
+											onSelect={ ( key ) =>
+												this.onFilterClick(
+													Object.values( tabFilters ).find( ( tabFilter ) => tabFilter.key === key )
+												)
+											}
+										/>
+									) }
+									{ ! isLoggedIn && tabFilters && (
+										<PatternAssemblerButton onClick={ this.onDesignYourOwnClick } />
+									) }
+								</div>
 							</div>
-						</div>
+						</>
 					) }
 					{ isCollectionView && (
 						<ThemeCollectionViewHeader
@@ -743,13 +796,13 @@ class ThemeShowcase extends Component {
 						/>
 					) }
 					<div className="themes__showcase">
+						{ showThemeErrors && <ThemeErrors siteId={ siteId } /> }
 						{ ! isSiteWooExpressOrEcomFreeTrial && this.renderBanner() }
 						{ this.renderThemes( themeProps ) }
 					</div>
 					{ siteId && <QuerySitePlans siteId={ siteId } /> }
 					{ siteId && <QuerySitePurchases siteId={ siteId } /> }
 					<QueryProductsList />
-					<ThanksModal source="list" />
 					<ActivationModal source="list" />
 					<EligibilityWarningModal />
 					<ThemePreview />

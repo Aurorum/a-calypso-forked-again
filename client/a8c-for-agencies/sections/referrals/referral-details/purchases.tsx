@@ -16,7 +16,7 @@ export default function ReferralPurchases( { purchases }: { purchases: ReferralP
 	const translate = useTranslate();
 	const dispatch = useDispatch();
 
-	const { data, isFetching } = useProductsQuery();
+	const { data, isFetching } = useProductsQuery( false, false, true );
 
 	const handleAssignToSite = useCallback(
 		( url: string ) => {
@@ -30,7 +30,7 @@ export default function ReferralPurchases( { purchases }: { purchases: ReferralP
 		() => [
 			{
 				id: 'product-details',
-				header: translate( 'Product Details' ).toUpperCase(),
+				label: translate( 'Product Details' ).toUpperCase(),
 				getValue: () => '-',
 				render: ( { item }: { item: ReferralPurchase } ): ReactNode => {
 					return <ProductDetails isFetching={ isFetching } purchase={ item } data={ data } />;
@@ -40,7 +40,7 @@ export default function ReferralPurchases( { purchases }: { purchases: ReferralP
 			},
 			{
 				id: 'assigned-to',
-				header: translate( 'Assigned to' ).toUpperCase(),
+				label: translate( 'Assigned to' ).toUpperCase(),
 				getValue: () => '-',
 				render: ( { item }: { item: ReferralPurchase } ): ReactNode => {
 					return (
@@ -57,7 +57,7 @@ export default function ReferralPurchases( { purchases }: { purchases: ReferralP
 			},
 			{
 				id: 'date',
-				header: translate( 'Assigned on' ).toUpperCase(),
+				label: translate( 'Assigned on' ).toUpperCase(),
 				getValue: () => '-',
 				render: ( { item }: { item: ReferralPurchase } ): ReactNode => {
 					return <DateAssigned purchase={ item } />;
@@ -67,7 +67,7 @@ export default function ReferralPurchases( { purchases }: { purchases: ReferralP
 			},
 			{
 				id: 'total',
-				header: translate( 'Total' ).toUpperCase(),
+				label: translate( 'Total' ).toUpperCase(),
 				getValue: () => '-',
 				render: ( { item }: { item: ReferralPurchase } ): ReactNode => {
 					return <TotalAmount isFetching={ isFetching } purchase={ item } data={ data } />;
@@ -79,11 +79,5 @@ export default function ReferralPurchases( { purchases }: { purchases: ReferralP
 		[ translate, data, isFetching, handleAssignToSite ]
 	);
 
-	return (
-		<ReferralDetailsTable
-			heading={ translate( 'Purchases' ) }
-			items={ purchases }
-			fields={ fields }
-		/>
-	);
+	return <ReferralDetailsTable items={ purchases } fields={ fields } />;
 }

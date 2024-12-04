@@ -53,6 +53,11 @@ class Sites extends Component {
 		if ( hasJetpackActivePlugins( site ) && ! isJetpackSiteOrJetpackCloud( site ) ) {
 			return false;
 		}
+
+		if ( site.is_deleted ) {
+			return false;
+		}
+
 		const path = this.props.siteBasePath;
 
 		// Domains can be managed on Simple and Atomic sites.
@@ -107,6 +112,7 @@ class Sites extends Component {
 		}
 
 		let path = this.getPath();
+		const initialPath = path;
 
 		const { translate } = this.props;
 
@@ -202,11 +208,13 @@ class Sites extends Component {
 				path = translate( 'Add-ons' );
 				break;
 		}
+		// We don't have a translated path, capitalize the provided path.
+		const capitalize = initialPath === path;
 
 		return translate( 'Select a site to open {{strong}}%(path)s{{/strong}}', {
 			args: { path },
 			components: {
-				strong: <strong />,
+				strong: <strong className={ clsx( { 'strong--capitalize': capitalize } ) } />,
 			},
 		} );
 	}

@@ -1,3 +1,4 @@
+import { isEnabled } from '@automattic/calypso-config';
 import {
 	TERM_ANNUALLY,
 	TERM_MONTHLY,
@@ -37,10 +38,15 @@ import { useQueryTheme } from 'calypso/components/data/query-theme';
 import { useQueryThemes } from 'calypso/components/data/query-themes';
 import FormattedHeader from 'calypso/components/formatted-header';
 import PremiumGlobalStylesUpgradeModal from 'calypso/components/premium-global-styles-upgrade-modal';
-import { THEME_TIERS } from 'calypso/components/theme-tier/constants';
+import {
+	THEME_TIERS,
+	THEME_TIER_PARTNER,
+	THEME_TIER_PREMIUM,
+} from 'calypso/components/theme-tier/constants';
 import ThemeTierBadge from 'calypso/components/theme-tier/theme-tier-badge';
 import { ThemeUpgradeModal as UpgradeModal } from 'calypso/components/theme-upgrade-modal';
-import { ActiveTheme } from 'calypso/data/themes/use-active-theme-query';
+import { useIsSiteAssemblerEnabled } from 'calypso/data/site-assembler';
+import { ActiveTheme, useActiveThemeQuery } from 'calypso/data/themes/use-active-theme-query';
 import { recordTracksEvent } from 'calypso/lib/analytics/tracks';
 import { useExperiment } from 'calypso/lib/explat';
 import { urlToSlug } from 'calypso/lib/url';
@@ -62,6 +68,7 @@ import {
 } from 'calypso/state/themes/selectors';
 import { isThemePurchased } from 'calypso/state/themes/selectors/is-theme-purchased';
 import { getPreferredBillingCycleProductSlug } from 'calypso/state/themes/theme-utils';
+import { useIsGoalsHoldout } from '../../../../hooks/use-is-goals-holdout';
 import { useIsPluginBundleEligible } from '../../../../hooks/use-is-plugin-bundle-eligible';
 import { useQuery } from '../../../../hooks/use-query';
 import { useSiteData } from '../../../../hooks/use-site-data';
@@ -106,6 +113,12 @@ const UnifiedDesignPickerStep: Step = ( { navigation, flow, stepName } ) => {
 	const variantName = experimentAssignment?.variationName;
 	const oldHighResImageLoading = ! isLoadingExperiment && variantName === 'treatment';
 
+	const [ isAddedGoalsExpLoading, addedGoalsExpAssignment ] = useExperiment(
+		'calypso_onboarding_goals_step_added_goals'
+	);
+
+	const isGoalsHoldout = useIsGoalsHoldout( stepName );
+
 	const queryParams = useQuery();
 	const { goBack, submit, exitFlow } = navigation;
 
@@ -114,15 +127,22 @@ const UnifiedDesignPickerStep: Step = ( { navigation, flow, stepName } ) => {
 	const translate = useTranslate();
 	const locale = useLocale();
 
-	const intent = useSelect(
-		( select ) => ( select( ONBOARD_STORE ) as OnboardSelect ).getIntent(),
-		[]
-	);
+	const { intent, goals } = useSelect( ( select ) => {
+		const onboardStore = select( ONBOARD_STORE ) as OnboardSelect;
+		return {
+			intent: onboardStore.getIntent(),
+			goals: onboardStore.getGoals(),
+		};
+	}, [] );
 
 	const { site, siteSlug, siteSlugOrId } = useSiteData();
 	const siteTitle = site?.name;
 	const siteDescription = site?.description;
 	const { shouldLimitGlobalStyles } = useSiteGlobalStylesStatus( site?.ID );
+	const { data: siteActiveTheme } = useActiveThemeQuery( site?.ID ?? 0, !! site?.ID );
+
+	const isSiteAssemblerEnabled = useIsSiteAssemblerEnabled();
+
 	const isDesignFirstFlow =
 		flow === DESIGN_FIRST_FLOW || queryParams.get( 'flowToReturnTo' ) === DESIGN_FIRST_FLOW;
 
@@ -173,8 +193,8 @@ const UnifiedDesignPickerStep: Step = ( { navigation, flow, stepName } ) => {
 				.filter(
 					( design ) =>
 						! (
-							design.is_premium ||
-							design.is_externally_managed ||
+							design?.design_tier === THEME_TIER_PREMIUM ||
+							design?.design_tier === THEME_TIER_PARTNER ||
 							( design.software_sets && design.software_sets.length > 0 )
 						)
 				)
@@ -207,7 +227,11 @@ const UnifiedDesignPickerStep: Step = ( { navigation, flow, stepName } ) => {
 		}
 	}, [ hasTrackedView, designs ] );
 
-	const categorizationOptions = getCategorizationOptions( intent );
+	const categorizationOptions = getCategorizationOptions(
+		intent,
+		goals,
+		addedGoalsExpAssignment?.variationName === 'treatment'
+	);
 	const categorization = useCategorizationFromApi(
 		allDesigns?.filters?.subject || EMPTY_OBJECT,
 		categorizationOptions
@@ -372,7 +396,8 @@ const UnifiedDesignPickerStep: Step = ( { navigation, flow, stepName } ) => {
 	// It should be removed when this property is ready on useQueryThemes
 	useQueryTheme( 'wpcom', selectedDesignThemeId );
 	const theme = useSelector( ( state ) => getTheme( state, 'wpcom', selectedDesignThemeId ) );
-	const fullLengthScreenshot = theme?.screenshots?.[ 0 ]?.replace( /\?.*/, '' );
+	const screenshot = theme?.screenshots?.[ 0 ] ?? theme?.screenshot;
+	const fullLengthScreenshot = screenshot?.replace( /\?.*/, '' );
 
 	const marketplaceThemeProducts =
 		useSelector( ( state ) =>
@@ -422,7 +447,9 @@ const UnifiedDesignPickerStep: Step = ( { navigation, flow, stepName } ) => {
 
 	const isLockedTheme =
 		! canSiteActivateTheme ||
-		( selectedDesign?.is_premium && ! isPremiumThemeAvailable && ! didPurchaseSelectedTheme ) ||
+		( selectedDesign?.design_tier === THEME_TIER_PREMIUM &&
+			! isPremiumThemeAvailable &&
+			! didPurchaseSelectedTheme ) ||
 		( selectedDesign?.is_externally_managed &&
 			( ! isMarketplaceThemeSubscribed || ! isExternallyManagedThemeAvailable ) ) ||
 		( ! isPluginBundleEligible && isBundled );
@@ -559,13 +586,16 @@ const UnifiedDesignPickerStep: Step = ( { navigation, flow, stepName } ) => {
 				} )
 			);
 
+			// @TODO Cleanup once the test phase is over.
+			const upgradeToPlan = isEnabled( 'global-styles/on-personal-plan' ) ? 'personal' : 'premium';
+
 			goToCheckout( {
 				flowName: flow,
 				stepName,
 				siteSlug: siteSlug || urlToSlug( site?.URL || '' ) || '',
 				// When the user is done with checkout, send them back to the current url
 				destination: window.location.href.replace( window.location.origin, '' ),
-				plan: 'premium',
+				plan: upgradeToPlan,
 			} );
 
 			setShowPremiumGlobalStylesModal( false );
@@ -617,12 +647,9 @@ const UnifiedDesignPickerStep: Step = ( { navigation, flow, stepName } ) => {
 					return Promise.resolve()
 						.then( () =>
 							reduxDispatch(
-								activateOrInstallThenActivate(
-									themeId ?? '',
-									site?.ID ?? 0,
-									'assembler',
-									false
-								) as ThunkAction< PromiseLike< string >, any, any, AnyAction >
+								activateOrInstallThenActivate( themeId ?? '', site?.ID ?? 0, {
+									source: 'assembler',
+								} ) as ThunkAction< PromiseLike< string >, any, any, AnyAction >
 							)
 						)
 						.then( ( activeThemeStylesheet: string ) =>
@@ -743,6 +770,18 @@ const UnifiedDesignPickerStep: Step = ( { navigation, flow, stepName } ) => {
 		recordTracksEvent( eventName, tracksProps );
 	}
 	function getPrimaryActionButtonAction(): () => void {
+		if ( isEnabled( 'global-styles/on-personal-plan' ) ) {
+			if ( isLockedTheme ) {
+				return upgradePlan;
+			}
+
+			if ( shouldUnlockGlobalStyles ) {
+				return unlockPremiumGlobalStyles;
+			}
+
+			return () => pickDesign();
+		}
+
 		const isPersonalDesign = selectedDesign?.design_tier === PERSONAL_THEME;
 		if ( isLockedTheme ) {
 			// For personal themes we favor the GS Upgrade Modal over the Plan Upgrade Modal.
@@ -766,7 +805,7 @@ const UnifiedDesignPickerStep: Step = ( { navigation, flow, stepName } ) => {
 	// ********** Main render logic
 
 	// Don't render until we've done fetching all the data needed for initial render.
-	if ( ! site || isLoadingDesigns ) {
+	if ( ! site || isLoadingDesigns || isAddedGoalsExpLoading ) {
 		return <StepperLoader />;
 	}
 
@@ -833,7 +872,7 @@ const UnifiedDesignPickerStep: Step = ( { navigation, flow, stepName } ) => {
 					placeholder={ null }
 					previewUrl={ previewUrl }
 					splitDefaultVariation={
-						! selectedDesign.is_premium &&
+						! ( selectedDesign?.design_tier === THEME_TIER_PREMIUM ) &&
 						! isBundled &&
 						! isPremiumThemeAvailable &&
 						! didPurchaseSelectedTheme &&
@@ -916,6 +955,10 @@ const UnifiedDesignPickerStep: Step = ( { navigation, flow, stepName } ) => {
 			shouldLimitGlobalStyles={ shouldLimitGlobalStyles }
 			getBadge={ getBadge }
 			oldHighResImageLoading={ oldHighResImageLoading }
+			isSiteAssemblerEnabled={ isSiteAssemblerEnabled }
+			siteActiveTheme={ siteActiveTheme?.[ 0 ]?.stylesheet ?? null }
+			showActiveThemeBadge={ intent !== 'build' }
+			isTierFilterEnabled={ isEnabled( 'design-picker/goal-centric' ) && ! isGoalsHoldout }
 		/>
 	);
 
@@ -930,7 +973,7 @@ const UnifiedDesignPickerStep: Step = ( { navigation, flow, stepName } ) => {
 			stepContent={ stepContent }
 			recordTracksEvent={ recordStepContainerTracksEvent }
 			goNext={ handleSubmit }
-			goBack={ handleBackClick }
+			goBack={ intent === 'update-design' ? submit : handleBackClick }
 		/>
 	);
 };

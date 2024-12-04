@@ -17,30 +17,73 @@ const setUrlParam = ( url: URL, paramName: string, paramValue?: string | null ):
 
 const getStatsCheckoutURL = (
 	siteSlug: string,
+	siteId: number | null,
 	product: string,
 	redirectUrl: string,
 	checkoutBackUrl: string,
 	from?: string,
 	adminUrl?: string,
-	isUpgrade?: boolean
+	isUpgrade?: boolean,
+	isSiteFullyConnected?: boolean
 ) => {
-	const isFromJetpack = from?.startsWith( 'jetpack' );
-	// Get the checkout URL for the product, or the siteless checkout URL if from Jetpack or no siteSlug is provided
-	const checkoutType = ( isFromJetpack && ! isUpgrade ) || ! siteSlug ? 'jetpack' : siteSlug;
+	const isFromWpAdmin = config.isEnabled( 'is_running_in_jetpack_site' );
+
+	// Get the checkout URL for the product, or the siteless checkout URL if there's no siteId or Jetpack is not fully
+	// connected (site and user):
+	let checkoutType;
+	let doRedirectToSitelessIfNotLoggedIn = false;
+	let isSitelessCheckout = false;
+
+	// A NOTE: For normal checkout (not siteless), in the checkout url, if you use the siteId in place of the siteSlug, and
+	// also add a `source=my-jetpack` query param, then the Calypso routing middleware will redirect to siteless checkout
+	// when the user is Not logged-in (instead of redirecting to login page), otherwise if logged-in then it's logged-in
+	// checkout as usual.
+
+	if ( siteId && siteSlug ) {
+		// We know what site it is
+		if ( isFromWpAdmin ) {
+			// We know the site and we're in wp-admin of the plugin
+			if ( isSiteFullyConnected ) {
+				// The plugin is site & user connected
+				if ( isUpgrade ) {
+					checkoutType = siteSlug; // Go to normal checkout (will redirect to login, if not logged-in)
+				} else {
+					doRedirectToSitelessIfNotLoggedIn = true;
+					checkoutType = siteId; // Go to normal checkout (will redirect to siteless checkout, if not logged-in)
+				}
+			} else {
+				// The plugin is Not fully connected
+				isSitelessCheckout = true;
+				checkoutType = 'jetpack'; // go to siteless checkout
+			}
+		} else {
+			// We know the site and we're in Calypso
+			checkoutType = siteSlug; // go to normal checkout (with site and user context (logged-in))
+		}
+	} else {
+		// We don't know the site and we're in Calypso
+		checkoutType = 'jetpack'; // go to siteless checkout
+	}
+
 	const checkoutProductUrl = new URL(
 		`/checkout/${ checkoutType }/${ product }`,
 		'https://wordpress.com'
 	);
 
-	// Add redirect_to parameter
-	setUrlParam( checkoutProductUrl, 'redirect_to', redirectUrl );
-	setUrlParam( checkoutProductUrl, 'checkoutBackUrl', checkoutBackUrl );
-
-	if ( isFromJetpack && siteSlug ) {
+	// Set URL parameters
+	if ( isSitelessCheckout ) {
 		setUrlParam( checkoutProductUrl, 'connect_after_checkout', 'true' );
 		setUrlParam( checkoutProductUrl, 'admin_url', adminUrl );
 		setUrlParam( checkoutProductUrl, 'from_site_slug', siteSlug );
 	}
+	if ( doRedirectToSitelessIfNotLoggedIn ) {
+		setUrlParam( checkoutProductUrl, 'site', siteSlug );
+		setUrlParam( checkoutProductUrl, 'source', 'my-jetpack' );
+	}
+
+	// Add redirect_to parameter
+	setUrlParam( checkoutProductUrl, 'redirect_to', redirectUrl );
+	setUrlParam( checkoutProductUrl, 'checkoutBackUrl', checkoutBackUrl );
 
 	return checkoutProductUrl.toString();
 };
@@ -65,14 +108,12 @@ const getCheckoutBackUrl = ( {
 	siteSlug: string;
 	adminUrl?: string;
 } ) => {
-	// TODO: Enumerate all possible values of `from` parameter.
-	const isFromWPAdmin = from.startsWith( 'jetpack' );
+	const isFromWPAdmin = config.isEnabled( 'is_running_in_jetpack_site' );
 	const isFromMyJetpack = from === 'jetpack-my-jetpack';
 	const isFromPlansPage = from === 'calypso-plans';
-	const isOdysseyStats = config.isEnabled( 'is_running_in_jetpack_site' );
 
 	// Use full URL even though redirecting on Calypso.
-	if ( ! isFromWPAdmin && ! isOdysseyStats ) {
+	if ( ! isFromWPAdmin ) {
 		if ( ! siteSlug ) {
 			return 'https://cloud.jetpack.com/pricing/';
 		}
@@ -88,20 +129,17 @@ const getCheckoutBackUrl = ( {
 };
 
 const getRedirectUrl = ( {
-	from,
 	type,
 	adminUrl,
 	redirectUri,
 	siteSlug,
 }: {
-	from: string;
 	type: string;
 	adminUrl?: string;
 	redirectUri?: string;
 	siteSlug: string;
 } ) => {
-	const isOdysseyStats = config.isEnabled( 'is_running_in_jetpack_site' );
-	const isStartedFromJetpackSite = from.startsWith( 'jetpack' ) || isOdysseyStats;
+	const isFromWPAdmin = config.isEnabled( 'is_running_in_jetpack_site' );
 	const statsPurchaseSuccess = type === 'free' ? 'free' : 'paid';
 
 	// If it's a siteless checkout, let it redirect to the thank you page,
@@ -110,7 +148,7 @@ const getRedirectUrl = ( {
 		return '';
 	}
 
-	if ( ! isStartedFromJetpackSite ) {
+	if ( ! isFromWPAdmin ) {
 		redirectUri = addPurchaseTypeToUri(
 			redirectUri || `/stats/day/${ siteSlug }`,
 			statsPurchaseSuccess
@@ -125,25 +163,29 @@ const gotoCheckoutPage = ( {
 	from,
 	type,
 	siteSlug,
+	siteId,
 	adminUrl,
 	redirectUri,
 	price,
 	quantity,
 	isUpgrade = false,
+	isSiteFullyConnected = true,
+	redirect = true,
 }: {
 	from: string;
 	type: 'pwyw' | 'free' | 'commercial';
 	siteSlug: string;
+	siteId: number | null;
 	adminUrl?: string;
 	redirectUri?: string;
 	price?: number;
 	quantity?: number;
 	isUpgrade?: boolean;
+	isSiteFullyConnected?: boolean;
+	redirect?: boolean;
 } ) => {
 	let eventName = '';
 	let product: string;
-
-	const isTierUpgradeSliderEnabled = config.isEnabled( 'stats/tier-upgrade-slider' );
 
 	switch ( type ) {
 		case 'pwyw':
@@ -157,15 +199,10 @@ const gotoCheckoutPage = ( {
 			product = PRODUCT_JETPACK_STATS_FREE;
 			break;
 		case 'commercial':
-			// Default to yearly/annual billing
 			eventName = 'commercial';
-			product = PRODUCT_JETPACK_STATS_YEARLY;
-
-			if ( isTierUpgradeSliderEnabled ) {
-				product = quantity
-					? `${ PRODUCT_JETPACK_STATS_YEARLY }:-q-${ quantity }`
-					: PRODUCT_JETPACK_STATS_YEARLY;
-			}
+			product = quantity
+				? `${ PRODUCT_JETPACK_STATS_YEARLY }:-q-${ quantity }`
+				: PRODUCT_JETPACK_STATS_YEARLY;
 
 			break;
 	}
@@ -178,20 +215,35 @@ const gotoCheckoutPage = ( {
 		quantity,
 	} );
 
-	const redirectUrl = getRedirectUrl( { from, type, adminUrl, redirectUri, siteSlug } );
+	const redirectUrl = getRedirectUrl( { type, adminUrl, redirectUri, siteSlug } );
 	const checkoutBackUrl = getCheckoutBackUrl( { from, adminUrl, siteSlug } );
 
 	// Allow some time for the event to be recorded before redirecting.
+	if ( ! redirect ) {
+		return getStatsCheckoutURL(
+			siteSlug,
+			siteId,
+			product,
+			redirectUrl,
+			checkoutBackUrl,
+			from,
+			adminUrl,
+			isUpgrade,
+			isSiteFullyConnected
+		);
+	}
 	setTimeout(
 		() =>
 			( window.location.href = getStatsCheckoutURL(
 				siteSlug,
+				siteId,
 				product,
 				redirectUrl,
 				checkoutBackUrl,
 				from,
 				adminUrl,
-				isUpgrade
+				isUpgrade,
+				isSiteFullyConnected
 			) ),
 		250
 	);

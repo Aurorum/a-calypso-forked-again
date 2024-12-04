@@ -10,6 +10,7 @@ import './style.scss';
 
 const UniversalNavbarHeader = ( {
 	className,
+	hideGetStartedCta = false,
 	isLoggedIn = false,
 	sectionName,
 	logoColor,
@@ -19,7 +20,7 @@ const UniversalNavbarHeader = ( {
 }: HeaderProps ) => {
 	const locale = useLocale();
 	const localizeUrl = useLocalizeUrl();
-	const { __, hasTranslation } = useI18n();
+	const { __ } = useI18n();
 	const [ isMobileMenuOpen, setMobileMenuOpen ] = useState( false );
 	const isEnglishLocale = useIsEnglishLocale();
 
@@ -142,17 +143,6 @@ const UniversalNavbarHeader = ( {
 															titleValue=""
 															content={ __( 'Commerce', __i18n_text_domain__ ) }
 															urlValue={ localizeUrl( '//wordpress.com/ecommerce/' ) }
-															type="dropdown"
-															target="_self"
-														/>
-														<ClickableItem
-															titleValue=""
-															content={
-																locale === 'en' || hasTranslation?.( 'Course Maker' )
-																	? __( 'Course Maker', __i18n_text_domain__ )
-																	: __( 'Course', __i18n_text_domain__ )
-															}
-															urlValue={ localizeUrl( '//wordpress.com/create-a-course/' ) }
 															type="dropdown"
 															target="_self"
 														/>
@@ -345,14 +335,16 @@ const UniversalNavbarHeader = ( {
 											type="nav"
 										/>
 									) }
-									<ClickableItem
-										className="x-nav-item x-nav-item__wide"
-										titleValue=""
-										content={ __( 'Get Started', __i18n_text_domain__ ) }
-										urlValue={ startUrl }
-										type="nav"
-										typeClassName="x-nav-link x-nav-link__primary x-link cta-btn-nav"
-									/>
+									{ ! hideGetStartedCta && (
+										<ClickableItem
+											className="x-nav-item x-nav-item__wide"
+											titleValue=""
+											content={ __( 'Get Started', __i18n_text_domain__ ) }
+											urlValue={ startUrl }
+											type="nav"
+											typeClassName="x-nav-link x-nav-link__primary x-link cta-btn-nav"
+										/>
+									) }
 									<li className="x-nav-item x-nav-item__narrow">
 										<button
 											role="menuitem"
@@ -505,16 +497,6 @@ const UniversalNavbarHeader = ( {
 												titleValue=""
 												content={ __( 'Commerce', __i18n_text_domain__ ) }
 												urlValue={ localizeUrl( '//wordpress.com/ecommerce/' ) }
-												type="menu"
-											/>
-											<ClickableItem
-												titleValue=""
-												content={
-													locale === 'en' || hasTranslation?.( 'Course Maker' )
-														? __( 'Course Maker', __i18n_text_domain__ )
-														: __( 'Course', __i18n_text_domain__ )
-												}
-												urlValue={ localizeUrl( '//wordpress.com/create-a-course/' ) }
 												type="menu"
 											/>
 											<ClickableItem

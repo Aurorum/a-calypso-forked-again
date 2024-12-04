@@ -253,7 +253,11 @@ export function getDisplayName( purchase: Purchase ): TranslateResult {
 	const { productName, productSlug, purchaseRenewalQuantity } = purchase;
 	const jetpackProductsDisplayNames = getJetpackProductsDisplayNames( 'full' );
 
-	if ( isJetpackAISlug( purchase.productSlug ) && purchase.purchaseRenewalQuantity ) {
+	if (
+		isJetpackAISlug( purchase.productSlug ) &&
+		purchase.purchaseRenewalQuantity &&
+		purchase.priceTierList?.length
+	) {
 		return i18n.translate( '%(productName)s (%(quantity)s requests per month)', {
 			args: {
 				productName: jetpackProductsDisplayNames[ productSlug ],
@@ -262,7 +266,11 @@ export function getDisplayName( purchase: Purchase ): TranslateResult {
 		} );
 	}
 
-	if ( isJetpackStatsPaidProductSlug( purchase.productSlug ) && purchase.purchaseRenewalQuantity ) {
+	if (
+		isJetpackStatsPaidProductSlug( purchase.productSlug ) &&
+		purchase.purchaseRenewalQuantity &&
+		purchase.priceTierList?.length
+	) {
 		return i18n.translate( '%(productName)s (%(quantity)s views per month)', {
 			args: {
 				productName: jetpackProductsDisplayNames[ productSlug ],
@@ -843,12 +851,15 @@ export function subscribedWithinPastWeek( purchase: Purchase ) {
 
 /**
  * Returns the payment logo to display based on the payment method
+ * 'displayBrand' respects the customer's card brand choice if available
  * @param {Object} purchase - the purchase with which we are concerned
  * @returns {string|null} the payment logo type, or null if no payment type is set.
  */
 export function paymentLogoType( purchase: Purchase ): string | null | undefined {
 	if ( isPaidWithCreditCard( purchase ) ) {
-		return purchase.payment.creditCard?.type;
+		return purchase.payment.creditCard?.displayBrand
+			? purchase.payment.creditCard?.displayBrand
+			: purchase.payment.creditCard?.type;
 	}
 
 	if ( isPaidWithPayPalDirect( purchase ) ) {
@@ -863,7 +874,7 @@ export function isAgencyPartnerType( partnerType: string ) {
 		return false;
 	}
 
-	return [ 'agency', 'agency_beta', 'a4a_agency' ].includes( partnerType );
+	return [ 'agency', 'a4a_agency' ].includes( partnerType );
 }
 
 export function purchaseType( purchase: Purchase ) {

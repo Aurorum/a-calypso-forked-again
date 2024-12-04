@@ -31,6 +31,7 @@ const ContactsPrivacyCard = ( props: ContactsCardProps ) => {
 		props.selectedDomainName
 	);
 	const disableEdit = !! ( isLoading || data?.email );
+	const pendingContactUpdate = props.hasPendingContactUpdate;
 
 	const togglePrivacy = () => {
 		const { selectedSite, privateDomain, selectedDomainName: name } = props;
@@ -126,9 +127,15 @@ const ContactsPrivacyCard = ( props: ContactsCardProps ) => {
 			isUpdatingPrivacy,
 			privacyAvailable,
 			privateDomain,
+			isHundredYearDomain,
 		} = props;
 
-		if ( ! privacyAvailable || ! contactInfoDisclosureAvailable || privateDomain ) {
+		if (
+			! privacyAvailable ||
+			! contactInfoDisclosureAvailable ||
+			privateDomain ||
+			isHundredYearDomain
+		) {
 			return false;
 		}
 
@@ -175,7 +182,8 @@ const ContactsPrivacyCard = ( props: ContactsCardProps ) => {
 		);
 	};
 
-	const { selectedDomainName, canManageConsent, currentRoute, readOnly } = props;
+	const { selectedDomainName, canManageConsent, currentRoute, readOnly, isHundredYearDomain } =
+		props;
 
 	return (
 		<div>
@@ -184,20 +192,22 @@ const ContactsPrivacyCard = ( props: ContactsCardProps ) => {
 					{ props.registeredViaTrustee && renderTrusteeNotice() }
 					<ContactDisplay selectedDomainName={ selectedDomainName } />
 					<div className="contact-information__button-container">
-						<Button
-							disabled={ disableEdit || readOnly }
-							href={
-								disableEdit || readOnly
-									? ''
-									: domainManagementEditContactInfo(
-											props.selectedSite.slug,
-											props.selectedDomainName,
-											currentRoute
-									  )
-							}
-						>
-							{ translate( 'Edit' ) }
-						</Button>
+						{ ! isHundredYearDomain && (
+							<Button
+								disabled={ disableEdit || readOnly || pendingContactUpdate }
+								href={
+									disableEdit || readOnly || pendingContactUpdate
+										? ''
+										: domainManagementEditContactInfo(
+												props.selectedSite.slug,
+												props.selectedDomainName,
+												currentRoute
+										  )
+								}
+							>
+								{ translate( 'Edit' ) }
+							</Button>
+						) }
 
 						{ canManageConsent && (
 							<Button
@@ -218,12 +228,21 @@ const ContactsPrivacyCard = ( props: ContactsCardProps ) => {
 							) }
 						</p>
 					) }
+					{ pendingContactUpdate && (
+						<p className="contact-information__pending-update-warn">
+							{ translate(
+								"This domain has a pending contact information update. You will be able to update your contact information once the pending update is complete. If you don't confirm the update, the pending request will be canceled after 5 days."
+							) }
+						</p>
+					) }
 				</div>
-				<div className="contact-information__toggle-container">
-					{ getPrivacyProtection() }
-					{ getContactInfoDisclosed() }
-					{ getPrivacyProtectionRecommendationText() }
-				</div>
+				{ ! isHundredYearDomain && (
+					<div className="contact-information__toggle-container">
+						{ getPrivacyProtection() }
+						{ getContactInfoDisclosed() }
+						{ getPrivacyProtectionRecommendationText() }
+					</div>
+				) }
 			</Card>
 		</div>
 	);

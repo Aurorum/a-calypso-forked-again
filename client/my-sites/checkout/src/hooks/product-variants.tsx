@@ -14,6 +14,7 @@ import {
 	TERM_OCTENNIALLY,
 	TERM_NOVENNIALLY,
 	TERM_DECENNIALLY,
+	TERM_CENTENNIALLY,
 } from '@automattic/calypso-products';
 import { isValueTruthy } from '@automattic/wpcom-checkout';
 import debugFactory from 'debug';
@@ -32,24 +33,15 @@ const isError = ( err: unknown ): err is Error => err instanceof Error;
 export interface SitePlanData {
 	autoRenew?: boolean;
 	autoRenewDate?: string;
-	canStartTrial?: boolean;
 	currencyCode: string;
 	currentPlan?: boolean;
-	discountReason?: string | null;
 	expiry?: string;
 	expiryDate?: string;
-	formattedDiscount: string;
-	formattedOriginalPrice: string;
-	formattedPrice: string;
 	freeTrial?: boolean;
 	hasDomainCredit?: boolean;
 	hasRedeemedDomainCredit?: boolean;
 	id: number;
 	interval: number;
-	introductoryOfferFormattedPrice?: string;
-	introductoryOfferRawPrice?: number;
-	isDomainUpgrade?: boolean;
-	productDisplayPrice?: string;
 	productName: string;
 	productSlug: string;
 	rawDiscount: string;
@@ -153,6 +145,9 @@ function sortVariant( a: ResponseCartProductVariant, b: ResponseCartProductVaria
 
 function getTermText( term: string, translate: ReturnType< typeof useTranslate > ): string {
 	switch ( term ) {
+		case TERM_CENTENNIALLY:
+			return String( translate( 'Hundred years' ) );
+
 		case TERM_DECENNIALLY:
 			return String( translate( 'Ten years' ) );
 

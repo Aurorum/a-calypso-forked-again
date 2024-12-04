@@ -1,6 +1,7 @@
 export { default as Badge } from './badge';
 export type { BadgeType } from './badge';
 export { default as Button } from './button';
+export type { ButtonProps } from './button';
 export { default as Card } from './card';
 export { default as CompactCard } from './card/compact';
 export { default as FoldableCard } from './foldable-card';
@@ -12,6 +13,7 @@ export * from './forms';
 export { default as Gridicon } from './gridicon';
 export { default as Popover } from './popover';
 export { default as ProductIcon } from './product-icon';
+export type { SupportedSlugs } from './product-icon/config';
 export { default as ProgressBar } from './progress-bar';
 export { default as CircularProgressBar } from './circular-progress-bar';
 export { default as ResponsiveToolbarGroup } from './responsive-toolbar-group';
@@ -20,6 +22,7 @@ export { default as RootChild } from './root-child';
 export { default as ScreenReaderText } from './screen-reader-text';
 export { useScrollToTop } from './scroll-to-top/use-scroll-to-top';
 export { default as SelectDropdown } from './select-dropdown';
+export { default as SearchableDropdown } from './searchable-dropdown';
 export { SiteThumbnail, DEFAULT_THUMBNAIL_SIZE } from './site-thumbnail';
 export { default as Suggestions } from './suggestions';
 export { default as PaginationControl } from './pagination-control';
@@ -36,11 +39,10 @@ export {
 	HorizontalBarListItem,
 	StatsCard,
 	StatsCardAvatar,
+	StatsCardTitleExtras,
 } from './horizontal-bar-list';
-export {
-	default as CountComparisonCard,
-	percentCalculator,
-} from './highlight-cards/count-comparison-card';
+export { default as CountCard } from './highlight-cards/count-card';
+export { default as CountComparisonCard } from './highlight-cards/count-comparison-card';
 export { default as AnnualHighlightCards } from './highlight-cards/annual-highlight-cards';
 export {
 	default as WeeklyHighlightCards,
@@ -49,6 +51,7 @@ export {
 	BETWEEN_PAST_EIGHT_AND_FIFTEEN_DAYS,
 	BETWEEN_PAST_THIRTY_ONE_AND_SIXTY_DAYS,
 } from './highlight-cards/weekly-highlight-cards';
+export { default as NoticeBanner } from './notice-banner';
 export { default as MobileHighlightCardListing } from './highlight-cards/mobile-highlight-cards';
 export { default as AppPromoCard } from './app-promo-card';
 export { default as ShortenedNumber } from './number-formatters';
@@ -67,11 +70,13 @@ export { default as PlanPrice } from './plan-price';
 export { default as ExternalLink } from './external-link';
 export { default as ExternalLinkWithTracking } from './external-link/with-tracking';
 export * from './theme-type-badge';
+export { default as FlowQuestion } from './flow-question';
 
 // Types
 export type { RenderThumbFunction } from './pricing-slider/types';
 
 // Logos
+export { default as ClientLogoList } from './client-logo-list';
 export { default as JetpackLogo } from './logos/jetpack-logo';
 export { default as BloombergLogo } from './logos/bloomberg-logo';
 export { default as CloudLogo } from './logos/cloud-logo';
@@ -86,3 +91,6 @@ export { default as VIPLogo } from './logos/vip-logo';
 export { default as WooLogo } from './logos/woo-logo';
 export { default as WordPressLogo } from './wordpress-logo';
 export { default as WooCommerceWooLogo } from './logos/woocommerce-woo-logo';
+export { default as Swipeable } from './swipeable';
+export { default as DotPager } from './dot-pager';
+export { default as EmbedContainer } from './embed-container';

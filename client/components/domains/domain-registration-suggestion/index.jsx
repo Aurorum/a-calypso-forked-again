@@ -1,6 +1,7 @@
 import { Badge, Gridicon } from '@automattic/components';
 import formatCurrency from '@automattic/format-currency';
 import { localizeUrl } from '@automattic/i18n-utils';
+import { HUNDRED_YEAR_DOMAIN_FLOW } from '@automattic/onboarding';
 import { HTTPS_SSL } from '@automattic/urls';
 import clsx from 'clsx';
 import { localize } from 'i18n-calypso';
@@ -276,15 +277,16 @@ class DomainRegistrationSuggestion extends Component {
 		} );
 
 		return (
-			<div className={ titleWrapperClassName }>
-				<h3 className="domain-registration-suggestion__title">
-					<div className="domain-registration-suggestion__domain-title">
-						<span className="domain-registration-suggestion__domain-title-name">{ name }</span>
-						<span className="domain-registration-suggestion__domain-title-tld">{ tld }</span>
-						{ ( showHstsNotice || showDotGayNotice ) && this.renderInfoBubble() }
-					</div>
-				</h3>
-				{ this.renderBadges() }
+			<div className="domain-registration-suggestion__title-info">
+				<div className={ titleWrapperClassName }>
+					<h3 className="domain-registration-suggestion__title">
+						<div className="domain-registration-suggestion__domain-title">
+							<span className="domain-registration-suggestion__domain-title-name">{ name }</span>
+							<span className="domain-registration-suggestion__domain-title-tld">{ tld }</span>
+							{ ( showHstsNotice || showDotGayNotice ) && this.renderInfoBubble() }
+						</div>
+					</h3>
+				</div>
 			</div>
 		);
 	}
@@ -452,6 +454,7 @@ class DomainRegistrationSuggestion extends Component {
 				showStrikedOutPrice={ showStrikedOutPrice }
 				isReskinned={ isReskinned }
 			>
+				{ this.renderBadges() }
 				{ this.renderDomain() }
 				{ this.renderMatchReason() }
 			</DomainSuggestion>
@@ -480,6 +483,9 @@ const mapStateToProps = ( state, props ) => {
 				stripZeros,
 			} );
 		}
+	} else if ( HUNDRED_YEAR_DOMAIN_FLOW === flowName ) {
+		productCost = props.suggestion.cost;
+		renewCost = props.suggestion.renew_cost;
 	} else {
 		productCost = getDomainPrice( productSlug, productsList, currentUserCurrencyCode, stripZeros );
 		// Renew cost is the same as the product cost for non-premium domains

@@ -1,9 +1,11 @@
-import { localizeUrl } from '@automattic/i18n-utils';
+import { localizeUrl, useHasEnTranslation } from '@automattic/i18n-utils';
 import { useTranslate } from 'i18n-calypso';
+import InlineSupportLink from 'calypso/components/inline-support-link';
 import { useHandleClickLink } from './use-handle-click-link';
 
 export const useFeaturesList = () => {
 	const translate = useTranslate();
+	const hasEnTranslation = useHasEnTranslation();
 	const handleClickLink = useHandleClickLink();
 
 	return [
@@ -37,16 +39,30 @@ export const useFeaturesList = () => {
 		},
 		{
 			id: 'multi-site-management',
-			title: translate( 'Multiple site management', {
-				comment: 'Feature title',
-			} ),
-			description: translate(
-				'Manage multiple WordPress sites from one place, get volume discounts on hosting products, and earn up to 50% revenue share when you migrate sites to our platform and refer our products to clients.',
-				{
-					comment: 'Feature description',
-				}
-			),
+			title: hasEnTranslation( 'Agency Hosting' )
+				? translate( 'Agency Hosting', {
+						comment: 'Feature title',
+				  } )
+				: translate( 'Multiple site management', {
+						comment: 'Feature title',
+				  } ),
+			description: hasEnTranslation(
+				"Earn up to 50% revenue share and get volume discounts on WordPress.com hosting when you migrate sites to our platform and promote Automattic's products to clients."
+			)
+				? translate(
+						"Earn up to 50% revenue share and get volume discounts on WordPress.com hosting when you migrate sites to our platform and promote Automattic's products to clients.",
+						{
+							comment: 'Feature description',
+						}
+				  )
+				: translate(
+						'Manage multiple WordPress sites from one place, get volume discounts on hosting products, and earn up to 50% revenue share when you migrate sites to our platform and refer our products to clients.',
+						{
+							comment: 'Feature description',
+						}
+				  ),
 			linkLearnMore: localizeUrl( 'https://wordpress.com/for-agencies?ref=wpcom-dev-dashboard' ),
+			linkTarget: '_self',
 		},
 		{
 			id: 'code',
@@ -85,7 +101,9 @@ export const useFeaturesList = () => {
 					comment: 'Feature description',
 				}
 			),
-			linkLearnMore: localizeUrl( 'https://developer.wordpress.com/docs/support/' ),
+			linkLearnMore: localizeUrl(
+				'https://developer.wordpress.com/?post_type=documentation&p=99417'
+			),
 		},
 		{
 			id: 'malware-scanning-removal',
@@ -98,35 +116,26 @@ export const useFeaturesList = () => {
 					comment: 'Feature description',
 					components: {
 						backupsLink: (
-							<a
-								id="restore"
-								href={ localizeUrl(
-									'https://developer.wordpress.com/docs/platform-features/real-time-backup-restore/'
-								) }
-								target="_blank"
-								rel="noopener noreferrer"
+							<InlineSupportLink
+								supportPostId={ 99415 }
+								supportLink="https://developer.wordpress.com/docs/platform-features/real-time-backup-restore/"
+								showIcon={ false }
 								onClick={ handleClickLink }
 							/>
 						),
 						malwareScanningLink: (
-							<a
-								id="malware-and-site-security"
-								href={ localizeUrl(
-									'https://developer.wordpress.com/docs/platform-features/jetpack-scan/'
-								) }
-								target="_blank"
-								rel="noopener noreferrer"
+							<InlineSupportLink
+								supportPostId={ 99380 }
+								supportLink="https://developer.wordpress.com/docs/platform-features/jetpack-scan/"
+								showIcon={ false }
 								onClick={ handleClickLink }
 							/>
 						),
 						siteMonitoringLink: (
-							<a
-								id="site-monitoring"
-								href={ localizeUrl(
-									'https://developer.wordpress.com/docs/troubleshooting/site-monitoring/'
-								) }
-								target="_blank"
-								rel="noopener noreferrer"
+							<InlineSupportLink
+								supportPostId={ 99421 }
+								supportLink="https://developer.wordpress.com/docs/troubleshooting/site-monitoring/"
+								showIcon={ false }
 								onClick={ handleClickLink }
 							/>
 						),

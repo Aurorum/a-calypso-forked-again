@@ -48,6 +48,7 @@ export default function PluginRowFormatter( {
 	const dispatch = useDispatch();
 
 	const billingPeriod = useSelector( getBillingInterval );
+	const pluginId = item.id || item.slug; // Plugin ID only available on Site plugin item object
 
 	const PluginDetailsButton = (
 		props: PropsWithChildren< { className: string; onClick?: MouseEventHandler } >
@@ -77,7 +78,6 @@ export default function PluginRowFormatter( {
 		};
 
 	const moment = useLocalizedMoment();
-	const state = useSelector( ( state ) => state );
 
 	const ago = ( date: MomentInput ) => {
 		return moment.utc( date, 'YYYY-MM-DD hh:mma' ).fromNow();
@@ -88,11 +88,14 @@ export default function PluginRowFormatter( {
 
 	const installInProgress = useSelector(
 		( state ) =>
-			selectedSite && isPluginActionInProgress( state, selectedSite.ID, item.id, INSTALL_PLUGIN )
+			selectedSite && isPluginActionInProgress( state, selectedSite.ID, pluginId, INSTALL_PLUGIN )
+	);
+
+	const { activation, autoupdate } = useSelector( ( state ) =>
+		getAllowedPluginActions( item, state, selectedSite )
 	);
 
 	if ( selectedSite ) {
-		const { activation, autoupdate } = getAllowedPluginActions( item, state, selectedSite );
 		canActivate = activation;
 		canUpdate = autoupdate;
 	}
@@ -103,10 +106,11 @@ export default function PluginRowFormatter( {
 
 	const siteCount = item?.sites && Object.keys( item.sites ).length;
 
-	const allStatuses = getPluginActionStatuses( state );
+	const isFromMarketplace = useSelector( ( state ) => isMarketplaceProduct( state, item?.slug ) );
+	const allStatuses = useSelector( ( state ) => getPluginActionStatuses( state ) );
 
 	let currentSiteStatuses = allStatuses.filter(
-		( status ) => status.pluginId === item.id && status.action !== UPDATE_PLUGIN
+		( status ) => status.pluginId === pluginId && status.action !== UPDATE_PLUGIN
 	);
 
 	if ( 'site-name' === columnKey ) {
@@ -223,7 +227,7 @@ export default function PluginRowFormatter( {
 						plugin={ pluginOnSite }
 						site={ selectedSite }
 						wporg={ !! item.wporg }
-						isMarketplaceProduct={ isMarketplaceProduct( state, item?.slug ) }
+						isMarketplaceProduct={ isFromMarketplace }
 						disabled={ !! item?.isSelectable }
 					/>
 				</div>
@@ -248,7 +252,6 @@ export default function PluginRowFormatter( {
 					selectedSite={ selectedSite }
 					className={ className }
 					updatePlugin={ updatePlugin }
-					siteCount={ siteCount }
 				/>
 			);
 		case 'install':

@@ -1,5 +1,3 @@
-import { Locator } from 'playwright';
-import { envVariables } from '../../..';
 import { makeSelectorFromBlockName, validatePublishedFormFields } from './shared';
 import { BlockFlow, EditorContext, PublishedPostContext } from '.';
 
@@ -29,6 +27,7 @@ export class FormAiFlow implements BlockFlow {
 	}
 
 	blockSidebarName = 'Form';
+	blockTestName = 'Form (AI)';
 	blockEditorSelector = makeSelectorFromBlockName( 'Form' );
 
 	/**
@@ -37,31 +36,33 @@ export class FormAiFlow implements BlockFlow {
 	 * @param {EditorContext} context The current context for the editor at the point of test execution
 	 */
 	async configure( context: EditorContext ): Promise< void > {
-		let aiInputParentLocator: Locator;
-		if ( envVariables.VIEWPORT_NAME === 'mobile' ) {
-			// On mobile, it's attached to the editor block toolbar, which is apart from the block DOM.
-			aiInputParentLocator = await context.editorPage.getEditorParent();
-		} else {
-			// On desktop, it's within the block DOM node.
-			aiInputParentLocator = context.addedBlockLocator;
-		}
+		const aiInputParentLocator = await context.editorPage.getEditorCanvas();
 
-		const aiInputReadyLocator = aiInputParentLocator.getByPlaceholder(
-			'Ask Jetpack AI to create your form'
+		const possiblePlaceholders = [
+			// New random placeholders.
+			'Example: a contact form with name, email, and message fields',
+			'Example: a pizza ordering form with name, address, phone number and toppings',
+			'Example: a survey form with multiple choice questions',
+			// Old placeholder. Can remove once new code is deployed everywhere.
+			'Ask Jetpack AI to edit…',
+		];
+		const aiInputReadyLocator = await Promise.any(
+			possiblePlaceholders.map( async ( placeholder ) => {
+				const locator = aiInputParentLocator.getByPlaceholder( placeholder );
+				await locator.waitFor();
+				return locator;
+			} )
 		);
-		const aiInputBusyLocator = aiInputParentLocator.getByRole( 'textbox', {
-			name: 'Creating your form. Please wait a few moments.',
-			disabled: true,
+
+		const aiInputBusyLocator = aiInputParentLocator.getByRole( 'button', {
+			name: 'Stop request',
 		} );
 		const sendButtonLocator = aiInputParentLocator.getByRole( 'button', {
 			name: 'Send request',
 		} );
-
 		await aiInputReadyLocator.fill( this.configurationData.prompt );
 		await sendButtonLocator.click();
-		await aiInputBusyLocator.waitFor();
-		await aiInputReadyLocator.waitFor( { timeout: 30 * 1000 } );
-
+		await aiInputBusyLocator.waitFor( { state: 'detached' } );
 		// Grab a first sample input label and submit button text to use for validation.
 		this.validationData = {
 			sampleInputLabel: await this.getFirstTextFieldLabel( context ),

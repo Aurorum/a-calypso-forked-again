@@ -1,6 +1,6 @@
 import { Card, CardBody, Icon } from '@wordpress/components';
 import { chevronRight } from '@wordpress/icons';
-import { trackStatsAnalyticsEvent } from '../../utils';
+import { trackStatsAnalyticsEvent } from 'calypso/my-sites/stats/utils';
 
 import './styles.scss';
 
@@ -26,8 +26,20 @@ const EmptyStateAction: React.FC< EmptyStateActionProps > = ( {
 		onClick();
 	};
 
+	const handleKeyPress = ( event: React.KeyboardEvent< HTMLDivElement > ) => {
+		if ( event.key === 'Enter' || event.key === ' ' ) {
+			handleClick();
+		}
+	};
+
 	return (
-		<Card className="stats-empty-action__cta" size="small" onClick={ handleClick }>
+		<Card
+			className="stats-empty-action__cta stats-empty-action__cta-parent"
+			size="small"
+			onClick={ handleClick }
+			onKeyDown={ handleKeyPress }
+			tabIndex={ 0 }
+		>
 			<CardBody className="stats-empty-action__card-body">
 				<Icon className="stats-empty-action__cta-link-icon" icon={ icon } size={ 20 } />
 				<span className="stats-empty-action__cta-link-text">{ text }</span>

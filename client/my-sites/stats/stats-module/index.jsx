@@ -45,6 +45,7 @@ class StatsModule extends Component {
 		gateStats: PropTypes.bool,
 		gateDownloads: PropTypes.bool,
 		hasNoBackground: PropTypes.bool,
+		skipQuery: PropTypes.bool,
 	};
 
 	static defaultProps = {
@@ -78,22 +79,26 @@ class StatsModule extends Component {
 		return <DatePicker period={ period } date={ startOf } path={ path } query={ query } summary />;
 	}
 
-	getHref() {
-		const { summary, period, path, siteSlug } = this.props;
-
-		// Some modules do not have view all abilities
-		if ( ! summary && period && path && siteSlug ) {
-			return (
-				'/stats/' +
-				period.period +
-				'/' +
-				path +
-				'/' +
-				siteSlug +
-				'?startDate=' +
-				period.startOf.format( 'YYYY-MM-DD' )
-			);
+	getSummaryLink() {
+		const { summary, period, path, siteSlug, query } = this.props;
+		if ( summary ) {
+			return;
 		}
+
+		const paramsValid = period && path && siteSlug;
+		if ( ! paramsValid ) {
+			return undefined;
+		}
+
+		let url = `/stats/${ period.period }/${ path }/${ siteSlug }`;
+
+		if ( query?.start_date ) {
+			url += `?startDate=${ query.start_date }&endDate=${ query.date }`;
+		} else {
+			url += `?startDate=${ period.endOf.format( 'YYYY-MM-DD' ) }`;
+		}
+
+		return url;
 	}
 
 	isAllTimeList() {
@@ -132,6 +137,8 @@ class StatsModule extends Component {
 			gateStats,
 			gateDownloads,
 			hasNoBackground,
+			skipQuery,
+			titleNodes,
 		} = this.props;
 
 		// Only show loading indicators when nothing is in state tree, and request in-flight
@@ -148,7 +155,7 @@ class StatsModule extends Component {
 
 		return (
 			<>
-				{ siteId && statType && (
+				{ ! skipQuery && siteId && statType && (
 					<QuerySiteStats statType={ statType } siteId={ siteId } query={ query } />
 				) }
 				<StatsListCard
@@ -157,12 +164,13 @@ class StatsModule extends Component {
 					data={ data }
 					useShortLabel={ useShortLabel }
 					title={ this.props.moduleStrings?.title }
+					titleNodes={ titleNodes }
 					emptyMessage={ moduleStrings.empty }
 					metricLabel={ metricLabel }
 					showMore={
 						displaySummaryLink && ! summary
 							? {
-									url: this.getHref(),
+									url: this.getSummaryLink(),
 									label:
 										data.length >= 10
 											? translate( 'View all', {
@@ -176,7 +184,9 @@ class StatsModule extends Component {
 					}
 					error={ hasError && <ErrorPanel /> }
 					loader={ isLoading && <StatsModulePlaceholder isLoading={ isLoading } /> }
-					heroElement={ path === 'countryviews' && <Geochart query={ query } /> }
+					heroElement={
+						path === 'countryviews' && <Geochart query={ query } skipQuery={ skipQuery } />
+					}
 					additionalColumns={ additionalColumns }
 					splitHeader={ !! additionalColumns }
 					mainItemLabel={ mainItemLabel }
@@ -206,6 +216,7 @@ class StatsModule extends Component {
 								path={ path }
 								borderless
 								period={ period }
+								skipQuery={ skipQuery }
 							/>
 						) }
 					</div>

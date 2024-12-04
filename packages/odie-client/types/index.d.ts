@@ -33,35 +33,12 @@ declare module 'calypso/components/popover-menu' {
 	export default EllipsisMenu;
 }
 
-declare module 'calypso/components/gravatar' {
-	const Gravatar: FC< {
-		user?: { display_name: string };
-		size?: number;
-		alt?: string;
-	} >;
-
-	export default Gravatar;
-}
-
-declare module 'calypso/components/textarea-autosize' {
-	const TextareaAutosize: FC< {
-		placeholder: string;
-		className: string;
-		rows: number;
-		value: string;
-		onChange: ( event: React.ChangeEvent< HTMLTextAreaElement > ) => void;
-		onKeyPress: ( event: KeyboardEvent< HTMLTextAreaElement > ) => Promise< void >;
-	} >;
-
-	export default TextareaAutosize;
-}
-
 declare module 'calypso/state/current-user/selectors' {
 	export const getCurrentUser: ( state: unknown ) => { display_name: string };
 }
 
 declare module 'calypso/components/async-load' {
-	import { FC, ReactNode, ComponentType } from 'react';
+	import { FC, ReactNode, ComponentType, FC } from 'react';
 
 	interface AsyncLoadProps {
 		placeholder?: ReactNode;
@@ -72,11 +49,4 @@ declare module 'calypso/components/async-load' {
 	const AsyncLoad: FC< AsyncLoadProps > & { component: ComponentType | null };
 
 	export default AsyncLoad;
-}
-
-interface Window {
-	odieUserData: {
-		displayName: string;
-		email?: string;
-	};
 }

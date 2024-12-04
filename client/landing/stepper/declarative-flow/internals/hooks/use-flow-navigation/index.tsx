@@ -37,12 +37,12 @@ export const useFlowNavigation = (): FlowNavigation => {
 	const intent = useOnboardingIntent();
 	const { setStepData } = useDispatch( STEPPER_INTERNAL_STORE );
 	const navigate = useNavigate();
-	const match = useMatch( '/:flow/:step/:lang?' );
+	const match = useMatch( '/:flow/:step?/:lang?' );
 	const { flow = null, step: currentStepSlug = null, lang = null } = match?.params || {};
 	const [ currentSearchParams ] = useSearchParams();
 
 	const customNavigate = useCallback< Navigate< StepperStep[] > >(
-		( nextStep: string, extraData = {} ) => {
+		( nextStep: string, extraData = {}, replace = false ) => {
 			const hasQueryParams = nextStep.includes( '?' );
 			const queryParams = ! hasQueryParams ? currentSearchParams : null;
 
@@ -59,7 +59,7 @@ export const useFlowNavigation = (): FlowNavigation => {
 				step: nextStep,
 			} );
 
-			navigate( addQueryParams( newPath, queryParams ) );
+			navigate( addQueryParams( newPath, queryParams ), { replace } );
 		},
 		[ currentSearchParams, flow, intent, lang, navigate, setStepData, currentStepSlug ]
 	);

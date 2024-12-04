@@ -1,7 +1,6 @@
 import { createHigherOrderComponent } from '@wordpress/compose';
-import { getLocaleSlug } from 'i18n-calypso';
 import { useCallback, ComponentType } from 'react';
-import { useLocale } from './locale-context';
+import { useLocale, getWpI18nLocaleSlug } from './locale-context';
 import {
 	localesWithBlog,
 	localesWithGoBlog,
@@ -14,13 +13,14 @@ import {
 	magnificentNonEnLocales,
 	localesForPricePlans,
 	jetpackComLocales,
+	wpLoginLocales,
 	Locale,
 } from './locales';
 
 const INVALID_URL = `http://__domain__.invalid`;
 
 function getDefaultLocale(): Locale {
-	return getLocaleSlug?.() ?? 'en';
+	return getWpI18nLocaleSlug() ?? 'en';
 }
 
 const setLocalizedUrlHost =
@@ -129,7 +129,7 @@ export const urlLocalizationMapping: UrlLocalizationMapping = {
 	'wordpress.com/pricing/': prefixLocalizedUrlPath( localesForPricePlans ),
 	'wordpress.com/tos/': prefixLocalizedUrlPath( magnificentNonEnLocales ),
 	'wordpress.com/wp-admin/': setLocalizedUrlHost( 'wordpress.com', magnificentNonEnLocales ),
-	'wordpress.com/wp-login.php': setLocalizedUrlHost( 'wordpress.com', magnificentNonEnLocales ),
+	'wordpress.com/wp-login.php': setLocalizedUrlHost( 'wordpress.com', wpLoginLocales ),
 	'jetpack.com': prefixLocalizedUrlPath( jetpackComLocales ),
 	'cloud.jetpack.com': prefixLocalizedUrlPath( jetpackComLocales ),
 	'en.support.wordpress.com': setLocalizedWpComPath( '/support', supportSiteLocales ),

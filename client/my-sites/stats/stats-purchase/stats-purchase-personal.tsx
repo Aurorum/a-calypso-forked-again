@@ -1,19 +1,15 @@
 import config from '@automattic/calypso-config';
 import page from '@automattic/calypso-router';
-import {
-	PricingSlider,
-	RenderThumbFunction,
-	Button as CalypsoButton,
-} from '@automattic/components';
-import formatCurrency from '@automattic/format-currency';
+import { Button as CalypsoButton } from '@automattic/components';
 import { Button, CheckboxControl } from '@wordpress/components';
 import { useTranslate } from 'i18n-calypso';
 import React, { useState } from 'react';
 import { recordTracksEvent } from 'calypso/lib/analytics/tracks';
-import useNoticeVisibilityMutation from 'calypso/my-sites/stats/hooks/use-notice-visibility-mutation';
-import { useNoticeVisibilityQuery } from 'calypso/my-sites/stats/hooks/use-notice-visibility-query';
+import { useJetpackConnectionStatus } from 'calypso/my-sites/stats/hooks/use-jetpack-connection-status';
+import useStatsPurchases from 'calypso/my-sites/stats/hooks/use-stats-purchases';
 import { useSelector } from 'calypso/state';
 import getIsSiteWPCOM from 'calypso/state/selectors/is-site-wpcom';
+import getIsSimpleSite from 'calypso/state/sites/selectors/is-simple-site';
 import gotoCheckoutPage from './stats-purchase-checkout-redirect';
 import { COMPONENT_CLASS_NAME, MIN_STEP_SPLITS } from './stats-purchase-consts';
 import StatsPWYWUpgradeSlider from './stats-pwyw-uprade-slider';
@@ -51,58 +47,15 @@ const PersonalPurchase = ( {
 	const [ isSellingChecked, setSellingChecked ] = useState( false );
 	const [ isBusinessChecked, setBusinessChecked ] = useState( false );
 	const [ isDonationChecked, setDonationChecked ] = useState( false );
-	const [ isPostponeBusy, setPostponeBusy ] = useState( false );
-	const {
-		sliderStepPrice,
-		minSliderPrice,
-		maxSliderPrice,
-		uiEmojiHeartTier,
-		uiImageCelebrationTier,
-	} = sliderSettings;
 	const isOdysseyStats = config.isEnabled( 'is_running_in_jetpack_site' );
-	const isTierUpgradeSliderEnabled = config.isEnabled( 'stats/tier-upgrade-slider' );
-
-	const sliderLabel = ( ( props, state ) => {
-		let emoji;
-
-		if ( subscriptionValue < uiEmojiHeartTier ) {
-			emoji = String.fromCodePoint( 0x1f60a ); /* Smiling face emoji */
-		} else if ( subscriptionValue < uiImageCelebrationTier ) {
-			emoji = String.fromCodePoint( 0x2764, 0xfe0f ); /* Heart emoji */
-		} else if ( subscriptionValue >= uiImageCelebrationTier ) {
-			emoji = String.fromCodePoint( 0x1f525 ); /* Fire emoji */
-		}
-
-		return (
-			<div { ...props }>
-				{ translate( '%(value)s/month', {
-					args: {
-						value: formatCurrency(
-							( state?.valueNow || subscriptionValue ) * sliderStepPrice,
-							currencyCode
-						),
-					},
-					comment: 'Price per month selected by the user via the pricing slider',
-				} ) }
-				{ ` ${ subscriptionValue > 0 ? emoji : '' }` }
-			</div>
-		);
-	} ) as RenderThumbFunction;
-
+	const { hasAnyStatsPlan } = useStatsPurchases( siteId );
 	const isWPCOMSite = useSelector( ( state ) => siteId && getIsSiteWPCOM( state, siteId ) );
+	const isSimpleSite = useSelector( ( state ) => getIsSimpleSite( state, siteId ) );
+	const { data: connectionStatus } = useJetpackConnectionStatus( siteId, !! isSimpleSite );
 	// The button of @automattic/components has built-in color scheme support for Calypso.
 	const ButtonComponent = isWPCOMSite ? CalypsoButton : Button;
-	// TODO: Remove old slider code paths.
-	const showOldSlider = ! isTierUpgradeSliderEnabled;
 
 	const continueButtonText = translate( 'Contribute now and continue' );
-	const { refetch: refetchNotices } = useNoticeVisibilityQuery( siteId, 'focus_jetpack_purchase' );
-	const { mutateAsync: mutateNoticeVisbilityAsync } = useNoticeVisibilityMutation(
-		siteId,
-		'focus_jetpack_purchase',
-		'postponed',
-		4 * 7 * 24 * 3600 // four weeks
-	);
 
 	const handleClick = ( e: React.MouseEvent< HTMLAnchorElement, MouseEvent > ) =>
 		handlePlanSwap( e );
@@ -119,28 +72,23 @@ const PersonalPurchase = ( {
 			from,
 			type: 'pwyw',
 			siteSlug,
+			siteId,
 			adminUrl,
 			redirectUri,
 			price: subscriptionValue / MIN_STEP_SPLITS,
+			isUpgrade: hasAnyStatsPlan, // All cross grades are not possible for the site-only flow.
+			isSiteFullyConnected: !! connectionStatus?.isSiteFullyConnected,
 		} );
 	};
 
 	const handleCheckoutPostponed = () => {
-		setPostponeBusy( true );
+		const event_from = isOdysseyStats ? 'jetpack_odyssey' : 'calypso';
+		recordTracksEvent( `${ event_from }_stats_purchase_flow_skip_button_clicked` );
 
-		mutateNoticeVisbilityAsync()
-			.then( refetchNotices )
-			.finally( () => {
-				// publish event
-				const event_from = isOdysseyStats ? 'jetpack_odyssey' : 'calypso';
-				recordTracksEvent( `${ event_from }_stats_purchase_flow_skip_button_clicked` );
-
-				// redirect to the Traffic page
-				setTimeout( () => {
-					setPostponeBusy( false );
-					page( `/stats/day/${ siteSlug }` );
-				}, 250 );
-			} );
+		// redirect to the Traffic page
+		setTimeout( () => {
+			page( `/stats/day/${ siteSlug }` );
+		}, 250 );
 	};
 
 	return (
@@ -161,38 +109,15 @@ const PersonalPurchase = ( {
 				) }
 			</div>
 
-			{ showOldSlider && (
-				<>
-					<PricingSlider
-						className={ `${ COMPONENT_CLASS_NAME }__slider` }
-						value={ subscriptionValue }
-						renderThumb={ sliderLabel }
-						onChange={ setSubscriptionValue }
-						maxValue={ Math.floor( maxSliderPrice / sliderStepPrice ) }
-						minValue={ Math.round( minSliderPrice / sliderStepPrice ) }
-					/>
-
-					<p className={ `${ COMPONENT_CLASS_NAME }__average-price` }>
-						{ translate( 'Our users pay %(value)s per month on average', {
-							args: {
-								value: formatCurrency( defaultStartingValue * sliderStepPrice, currencyCode ),
-							},
-						} ) }
-					</p>
-				</>
-			) }
-
-			{ isTierUpgradeSliderEnabled && (
-				<StatsPWYWUpgradeSlider
-					settings={ sliderSettings }
-					currencyCode={ currencyCode }
-					analyticsEventName={ `${
-						isOdysseyStats ? 'jetpack_odyssey' : 'calypso'
-					}_stats_purchase_pwyw_slider_clicked` }
-					defaultStartingValue={ defaultStartingValue }
-					onSliderChange={ handleSliderChanged }
-				/>
-			) }
+			<StatsPWYWUpgradeSlider
+				settings={ sliderSettings }
+				currencyCode={ currencyCode }
+				analyticsEventName={ `${
+					isOdysseyStats ? 'jetpack_odyssey' : 'calypso'
+				}_stats_purchase_pwyw_slider_clicked` }
+				defaultStartingValue={ defaultStartingValue }
+				onSliderChange={ handleSliderChanged }
+			/>
 
 			{ subscriptionValue === 0 && (
 				<div className={ `${ COMPONENT_CLASS_NAME }__personal-checklist` }>
@@ -255,7 +180,15 @@ const PersonalPurchase = ( {
 							! isAdsChecked || ! isSellingChecked || ! isBusinessChecked || ! isDonationChecked
 						}
 						onClick={ () =>
-							gotoCheckoutPage( { from, type: 'free', siteSlug, adminUrl, redirectUri } )
+							gotoCheckoutPage( {
+								from,
+								type: 'free',
+								siteSlug,
+								siteId,
+								adminUrl,
+								redirectUri,
+								isSiteFullyConnected: connectionStatus?.isSiteFullyConnected,
+							} )
 						}
 					>
 						{ translate( 'Continue with Jetpack Stats for free' ) }
@@ -271,12 +204,7 @@ const PersonalPurchase = ( {
 						{ continueButtonText }
 					</ButtonComponent>
 
-					<ButtonComponent
-						variant="secondary"
-						isBusy={ isWPCOMSite ? undefined : isPostponeBusy } // for <Button />
-						busy={ isWPCOMSite ? isPostponeBusy : undefined } // for <CalypsoButton />
-						onClick={ handleCheckoutPostponed }
-					>
+					<ButtonComponent variant="secondary" onClick={ handleCheckoutPostponed }>
 						{ translate( 'I will do it later' ) }
 					</ButtonComponent>
 				</div>

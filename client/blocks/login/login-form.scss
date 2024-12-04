@@ -42,6 +42,14 @@ form {
 				justify-content: center;
 				padding: 0 16px;
 			}
+			.login-form__validation-error-wrapper {
+				margin-bottom: 0;
+			}
 		}
 	}
+}
+
+.is-jetpack .login__form-account-tip {
+	margin-block-start: -8px;
+	font-size: 0.75rem;
 }

@@ -3,6 +3,7 @@ import { WordPressLogo } from '@automattic/components';
 import {
 	type SelectItem,
 	IntentScreen,
+	HUNDRED_YEAR_DOMAIN_FLOW,
 	HUNDRED_YEAR_PLAN_FLOW,
 	StepContainer,
 	isBlogOnboardingFlow,
@@ -10,6 +11,7 @@ import {
 	START_WRITING_FLOW,
 	DESIGN_FIRST_FLOW,
 	ASSEMBLER_FIRST_FLOW,
+	READYMADE_TEMPLATE_FLOW,
 	AI_ASSEMBLER_FLOW,
 } from '@automattic/onboarding';
 import { useTranslate } from 'i18n-calypso';
@@ -29,6 +31,7 @@ const useIntentsForFlow = ( flowName: string ): NewOrExistingSiteIntent[] => {
 	const translate = useTranslate();
 	switch ( flowName ) {
 		case HUNDRED_YEAR_PLAN_FLOW:
+		case HUNDRED_YEAR_DOMAIN_FLOW:
 			return [
 				{
 					key: 'existing-site',
@@ -64,6 +67,7 @@ const useIntentsForFlow = ( flowName: string ): NewOrExistingSiteIntent[] => {
 		case DESIGN_FIRST_FLOW:
 		case START_WRITING_FLOW:
 		case ASSEMBLER_FIRST_FLOW:
+		case READYMADE_TEMPLATE_FLOW:
 		case AI_ASSEMBLER_FLOW:
 			return [
 				{
@@ -104,13 +108,16 @@ const NewOrExistingSiteStep: Step = function NewOrExistingSiteStep( { navigation
 		}
 		switch ( flow ) {
 			case HUNDRED_YEAR_PLAN_FLOW:
+			case HUNDRED_YEAR_DOMAIN_FLOW:
 				return translate( 'Start your legacy' );
 			default:
 				return null;
 		}
 	};
 
-	const Container = flow === HUNDRED_YEAR_PLAN_FLOW ? HundredYearPlanStepWrapper : StepContainer;
+	const Container = [ HUNDRED_YEAR_PLAN_FLOW, HUNDRED_YEAR_DOMAIN_FLOW ].includes( flow )
+		? HundredYearPlanStepWrapper
+		: StepContainer;
 
 	return (
 		<Container

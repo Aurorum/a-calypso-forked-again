@@ -74,10 +74,13 @@ async function runBuilder( args ) {
 	await Promise.all( [
 		runAll( [ `build:*${ watch ? ' --watch' : '' }` ], runOpts ).then( () => {
 			console.log( 'Build completed!' );
-			if ( ! watch && sync ) {
-				// In non-watch + sync mode, we sync only once after the build has finished.
-				setupRemoteSync( localPath, remotePath );
-			}
+			const translate = runAll( 'translate', runOpts ).catch( () => {} );
+			translate.then( () => {
+				if ( ! watch && sync ) {
+					// In non-watch + sync mode, we sync only once after the build has finished.
+					setupRemoteSync( localPath, remotePath );
+				}
+			} );
 		} ),
 		// In watch + sync mode, we start watching to sync while the webpack build is happening.
 		watch && sync && setupRemoteSync( localPath, remotePath, true ),
@@ -100,6 +103,8 @@ async function runBuilder( args ) {
  * mode after a full sync. Is otherwise pending until the user kills the process.
  */
 function setupRemoteSync( localPath, remotePath, shouldWatch = false ) {
+	const remoteHost = process.env.WPCOM_SANDBOX || 'wpcom-sandbox';
+
 	return new Promise( ( resolve, reject ) => {
 		let rsync = null;
 		const debouncedSync = debouncer( () => {
@@ -111,7 +116,7 @@ function setupRemoteSync( localPath, remotePath, shouldWatch = false ) {
 				rsync.kill( 'SIGINT' );
 			}
 			rsync = exec(
-				`rsync -ahz --exclude=".*" ${ localPath } wpcom-sandbox:${ remotePath }`,
+				`rsync -ahz --exclude=".*" ${ localPath } ${ remoteHost }:${ remotePath }`,
 				( err ) => {
 					rsync = null;
 					// err.signal is null on macOS, so use error code 20 in that case.
@@ -163,10 +168,6 @@ function showTips( tasks ) {
 		return;
 	}
 
-	const tips = {
-		'build:newspack-blocks': 'You may need to run `composer install` from wp-calypso root.',
-	};
-
 	const numFailed = tasks.reduce( ( total, { code } ) => total + ( code ? 1 : 0 ), 0 );
 	if ( numFailed === tasks.length ) {
 		console.log(
@@ -174,13 +175,6 @@ function showTips( tasks ) {
 		);
 		return;
 	}
-
-	// If only individual tasks failed, print individual tips.
-	tasks.forEach( ( { code, name } ) => {
-		if ( code !== 0 && tips[ name ] ) {
-			console.log( tips[ name ] );
-		}
-	} );
 }
 
 function git( cmd ) {

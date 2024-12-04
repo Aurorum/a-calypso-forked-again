@@ -22,8 +22,14 @@ interface PlansGridContext {
 	 * for rendering features with categories based on available/associated feature group map.
 	 */
 	enableCategorisedFeatures?: boolean;
+	enableStorageAsBadge?: boolean;
+	enableReducedFeatureGroupSpacing?: boolean;
+	enableLogosOnlyForEnterprisePlan?: boolean;
+	enableTermSavingsPriceDisplay?: boolean;
 	featureGroupMap: Partial< FeatureGroupMap >;
 	hideUnsupportedFeatures?: boolean;
+	hideFeatureGroupTitles?: boolean;
+	enterpriseFeaturesList?: string[];
 }
 
 const PlansGridContext = createContext< PlansGridContext >( {} as PlansGridContext );
@@ -40,8 +46,14 @@ const PlansGridContextProvider = ( {
 	coupon,
 	enableFeatureTooltips,
 	enableCategorisedFeatures,
+	enableStorageAsBadge,
+	enableReducedFeatureGroupSpacing,
+	enableLogosOnlyForEnterprisePlan,
+	enableTermSavingsPriceDisplay,
 	featureGroupMap,
 	hideUnsupportedFeatures,
+	hideFeatureGroupTitles,
+	enterpriseFeaturesList,
 }: GridContextProps ) => {
 	const gridPlansIndex = gridPlans.reduce(
 		( acc, gridPlan ) => ( {
@@ -67,8 +79,14 @@ const PlansGridContextProvider = ( {
 				coupon,
 				enableFeatureTooltips,
 				enableCategorisedFeatures,
+				enableStorageAsBadge,
+				enableReducedFeatureGroupSpacing,
+				enableLogosOnlyForEnterprisePlan,
+				enableTermSavingsPriceDisplay,
 				featureGroupMap,
 				hideUnsupportedFeatures,
+				hideFeatureGroupTitles,
+				enterpriseFeaturesList,
 			} }
 		>
 			{ children }

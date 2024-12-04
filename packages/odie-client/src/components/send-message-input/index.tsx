@@ -1,39 +1,49 @@
-/* eslint-disable no-restricted-imports */
-import { useTranslate } from 'i18n-calypso';
-import React, { useState, KeyboardEvent, FormEvent, useRef, useEffect } from 'react';
-import TextareaAutosize from 'calypso/components/textarea-autosize';
+import { Spinner } from '@wordpress/components';
+import { useCallback, useRef, useState } from '@wordpress/element';
+import { __ } from '@wordpress/i18n';
+import clsx from 'clsx';
 import ArrowUp from '../../assets/arrow-up.svg';
+import { SendMessageIcon } from '../../assets/send-message-icon';
 import { useOdieAssistantContext } from '../../context';
-import { useOdieSendMessage } from '../../query';
+import { useSendChatMessage } from '../../hooks';
 import { Message } from '../../types';
-import { JumpToRecent } from '../message/jump-to-recent';
+import { AttachmentButton } from './attachment-button';
+import { ResizableTextarea } from './resizable-textarea';
 
 import './style.scss';
 
-export const OdieSendMessageButton = ( {
-	scrollToRecent,
-	scrollToBottom,
-	enableStickToBottom,
-	enableJumpToRecent,
-}: {
-	scrollToRecent: () => void;
-	scrollToBottom: ( force?: boolean ) => void;
-	enableStickToBottom: () => void;
-	enableJumpToRecent: boolean;
-} ) => {
-	const [ messageString, setMessageString ] = useState< string >( '' );
+export const OdieSendMessageButton = () => {
 	const divContainerRef = useRef< HTMLDivElement >( null );
-	const { initialUserMessage, chat, isLoading, trackEvent } = useOdieAssistantContext();
-	const { mutateAsync: sendOdieMessage } = useOdieSendMessage();
-	const translate = useTranslate();
+	const inputRef = useRef< HTMLTextAreaElement >( null );
+	const { trackEvent, chat, shouldUseHelpCenterExperience } = useOdieAssistantContext();
+	const sendMessage = useSendChatMessage();
+	const isChatBusy = chat.status === 'loading' || chat.status === 'sending';
+	const [ isMessageSizeValid, setIsMessageSizeValid ] = useState( true );
+	const [ submitDisabled, setSubmitDisabled ] = useState( true );
 
-	useEffect( () => {
-		if ( initialUserMessage && ! chat.chat_id ) {
-			setMessageString( initialUserMessage );
+	const onKeyUp = useCallback( () => {
+		// Only triggered when the message is empty
+		// used to remove validation message.
+		setIsMessageSizeValid( true );
+	}, [] );
+
+	const sendMessageHandler = useCallback( async () => {
+		const message = inputRef.current?.value.trim();
+		const messageLength = message?.length || 0;
+		const isMessageLengthValid = messageLength <= 4096; // zendesk api validation
+
+		setIsMessageSizeValid( isMessageLengthValid );
+
+		if (
+			message === '' ||
+			isChatBusy ||
+			( shouldUseHelpCenterExperience && ! isMessageLengthValid )
+		) {
+			return;
 		}
-	}, [ initialUserMessage, chat.chat_id ] );
+		const messageString = inputRef.current?.value;
+		inputRef.current!.value = '';
 
-	const sendMessage = async () => {
 		try {
 			trackEvent( 'chat_message_action_send' );
 
@@ -43,7 +53,9 @@ export const OdieSendMessageButton = ( {
 				type: 'message',
 			} as Message;
 
-			await sendOdieMessage( { message } );
+			setSubmitDisabled( true );
+
+			await sendMessage( message );
 
 			trackEvent( 'chat_message_action_receive' );
 		} catch ( e ) {
@@ -51,77 +63,46 @@ export const OdieSendMessageButton = ( {
 			trackEvent( 'chat_message_error', {
 				error: error?.message,
 			} );
+		} finally {
+			setSubmitDisabled( false );
 		}
-	};
+	}, [ sendMessage, isChatBusy, shouldUseHelpCenterExperience, trackEvent ] );
 
-	const sendMessageIfNotEmpty = async () => {
-		if ( messageString.trim() === '' ) {
-			return;
-		}
-		setMessageString( '' );
-		enableStickToBottom();
-		await sendMessage();
-		scrollToBottom( true );
-	};
-
-	const handleKeyPress = async ( event: KeyboardEvent< HTMLTextAreaElement > ) => {
-		scrollToBottom( false );
-		if ( isLoading ) {
-			return;
-		}
-		if ( event.key === 'Enter' && ! event.shiftKey ) {
-			event.preventDefault();
-			await sendMessageIfNotEmpty();
-		}
-	};
-
-	const handleSubmit = async ( event: FormEvent< HTMLFormElement > ) => {
-		event.preventDefault();
-		await sendMessageIfNotEmpty();
-	};
-
-	const userHasAskedToContactHE = chat.messages.some(
-		( message ) => message.context?.flags?.forward_to_human_support === true
+	const classes = clsx(
+		'odie-send-message-inner-button',
+		shouldUseHelpCenterExperience && 'odie-send-message-inner-button__flag'
 	);
-	const userHasNegativeFeedback = chat.messages.some( ( message ) => message.liked === false );
-
 	return (
 		<>
-			<JumpToRecent scrollToBottom={ scrollToRecent } enableJumpToRecent={ enableJumpToRecent } />
+			{ ! isMessageSizeValid && shouldUseHelpCenterExperience && (
+				<div className="odie-chatbox-invalid__message">
+					{ __( 'Message exceeds 4096 characters limit.' ) }
+				</div>
+			) }
 			<div className="odie-chat-message-input-container" ref={ divContainerRef }>
-				<form onSubmit={ handleSubmit } className="odie-send-message-input-container">
-					<TextareaAutosize
-						placeholder={
-							userHasAskedToContactHE || userHasNegativeFeedback
-								? translate( 'Continue chatting with Wapuu', {
-										context: 'Placeholder text for the message input field (chat)',
-										textOnly: true,
-								  } )
-								: translate( 'Ask your question', {
-										context: 'Placeholder text for the message input field (chat)',
-										textOnly: true,
-								  } )
-						}
+				<form
+					onSubmit={ ( event ) => {
+						event.preventDefault();
+						sendMessageHandler();
+					} }
+					className="odie-send-message-input-container"
+				>
+					<ResizableTextarea
+						shouldDisableInputField={ isChatBusy }
+						sendMessageHandler={ sendMessageHandler }
 						className="odie-send-message-input"
-						rows={ 1 }
-						value={ messageString }
-						onChange={ ( event: React.ChangeEvent< HTMLTextAreaElement > ) =>
-							setMessageString( event.currentTarget.value )
-						}
-						onKeyPress={ handleKeyPress }
+						inputRef={ inputRef }
+						setSubmitDisabled={ setSubmitDisabled }
+						keyUpHandle={ onKeyUp }
 					/>
-					<button
-						type="submit"
-						className="odie-send-message-inner-button"
-						disabled={ messageString.trim() === '' || isLoading }
-					>
-						<img
-							src={ ArrowUp }
-							alt={ translate( 'Arrow icon', {
-								context: 'html alt tag',
-								textOnly: true,
-							} ) }
-						/>
+					{ isChatBusy && <Spinner className="odie-send-message-input-spinner" /> }
+					{ shouldUseHelpCenterExperience && <AttachmentButton /> }
+					<button type="submit" className={ classes } disabled={ submitDisabled }>
+						{ shouldUseHelpCenterExperience ? (
+							<SendMessageIcon />
+						) : (
+							<img src={ ArrowUp } alt={ __( 'Arrow icon', __i18n_text_domain__ ) } />
+						) }
 					</button>
 				</form>
 			</div>

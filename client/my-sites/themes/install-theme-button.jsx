@@ -4,6 +4,7 @@ import { useTranslate } from 'i18n-calypso';
 import { useDispatch, useSelector } from 'react-redux';
 import { recordTracksEvent } from 'calypso/state/analytics/actions';
 import { isUserLoggedIn } from 'calypso/state/current-user/selectors';
+import getSiteFeatures from 'calypso/state/selectors/get-site-features';
 import isAtomicSite from 'calypso/state/selectors/is-site-automated-transfer';
 import siteHasFeature from 'calypso/state/selectors/site-has-feature';
 import {
@@ -24,8 +25,13 @@ function getInstallThemeUrl( state, siteId ) {
 
 	const atomicSite = isAtomicSite( state, siteId );
 	const siteCanInstallThemes = siteHasFeature( state, siteId, FEATURE_INSTALL_THEMES );
-	if ( atomicSite && siteCanInstallThemes ) {
-		return getSiteThemeInstallUrl( state, siteId );
+	const siteHasFeaturesLoaded = !! getSiteFeatures( state, siteId );
+
+	if ( atomicSite && ( siteCanInstallThemes || ! siteHasFeaturesLoaded ) ) {
+		const themeInstallUrlObj = new URL( getSiteThemeInstallUrl( state, siteId ) );
+		themeInstallUrlObj.searchParams.append( 'browse', 'popular' );
+		themeInstallUrlObj.searchParams.append( 'wpcom-upload', '1' );
+		return themeInstallUrlObj.toString();
 	}
 
 	const siteSlug = getSiteSlug( state, siteId );

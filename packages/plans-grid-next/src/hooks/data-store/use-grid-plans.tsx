@@ -153,6 +153,9 @@ const usePlanTypesWithIntent = ( {
 		case 'plans-new-hosted-site':
 			planTypes = [ TYPE_BUSINESS, TYPE_ECOMMERCE ];
 			break;
+		case 'plans-new-hosted-site-business-only':
+			planTypes = [ TYPE_BUSINESS ];
+			break;
 		case 'plans-import':
 			planTypes = [ TYPE_FREE, TYPE_PERSONAL, TYPE_PREMIUM, TYPE_BUSINESS ];
 			break;
@@ -197,6 +200,7 @@ const usePlanTypesWithIntent = ( {
 			planTypes = [ TYPE_PREMIUM, TYPE_BUSINESS ];
 			break;
 		case 'plans-affiliate':
+		case 'plans-site-selected-legacy':
 			planTypes = [ TYPE_FREE, TYPE_PERSONAL, TYPE_PREMIUM, TYPE_BUSINESS, TYPE_ECOMMERCE ];
 			break;
 		default:
@@ -228,8 +232,8 @@ const useGridPlans: UseGridPlansType = ( {
 	coupon,
 	siteId,
 	isDisplayingPlansNeededForFeature,
-	forceDefaultIntent,
 	highlightLabelOverrides,
+	isDomainOnlySite,
 } ) => {
 	const freeTrialPlanSlugs = useFreeTrialPlanSlugs?.( {
 		intent: intent ?? 'default',
@@ -248,7 +252,7 @@ const useGridPlans: UseGridPlansType = ( {
 	} );
 	const planSlugsForIntent = usePlansFromTypes( {
 		planTypes: usePlanTypesWithIntent( {
-			intent: forceDefaultIntent ? 'plans-default-wpcom' : intent,
+			intent,
 			selectedPlan,
 			siteId,
 			hiddenPlans,
@@ -257,12 +261,17 @@ const useGridPlans: UseGridPlansType = ( {
 		term,
 		intent,
 	} );
+
+	const { planSlug: sitePlanSlug, purchaseId } = Plans.useCurrentPlan( { siteId } ) || {};
+
 	const plansAvailabilityForPurchase = useCheckPlanAvailabilityForPurchase( {
 		planSlugs: availablePlanSlugs,
+		siteId,
+		shouldIgnorePlanOwnership: !! purchaseId, // Ignore plan ownership only if the site is on a paid plan
 	} );
 
 	// only fetch highlights for the plans that are available for the intent
-	const { planSlug: sitePlanSlug } = Plans.useCurrentPlan( { siteId } ) || {};
+
 	const highlightLabels = useHighlightLabels( {
 		intent,
 		planSlugs: planSlugsForIntent,
@@ -270,6 +279,7 @@ const useGridPlans: UseGridPlansType = ( {
 		selectedPlan,
 		plansAvailabilityForPurchase,
 		highlightLabelOverrides,
+		isDomainOnlySite: isDomainOnlySite || false,
 	} );
 
 	// TODO: pricedAPIPlans to be queried from data-store package

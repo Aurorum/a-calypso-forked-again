@@ -1,9 +1,7 @@
-import config from '@automattic/calypso-config';
 import { Button } from '@automattic/components';
 import { localizeUrl } from '@automattic/i18n-utils';
 import { SET_UP_EMAIL_AUTHENTICATION_FOR_YOUR_DOMAIN } from '@automattic/urls';
 import { useQueryClient } from '@tanstack/react-query';
-import { ExternalLink } from '@wordpress/components';
 import { useTranslate } from 'i18n-calypso';
 import { useEffect, useState } from 'react';
 import { connect, useSelector } from 'react-redux';
@@ -49,7 +47,6 @@ import {
 	canCurrentUserUseCustomerHome,
 	getSitePlan,
 	getSiteOption,
-	isGlobalSiteViewEnabled as getIsGlobalSiteViewEnabled,
 } from 'calypso/state/sites/selectors';
 import isJetpackSite from 'calypso/state/sites/selectors/is-jetpack-site';
 import { getSelectedSite, getSelectedSiteId } from 'calypso/state/ui/selectors';
@@ -77,9 +74,6 @@ const Home = ( {
 	const [ launchedSiteId, setLaunchedSiteId ] = useState( null );
 	const queryClient = useQueryClient();
 	const translate = useTranslate();
-	const isGlobalSiteViewEnabled = useSelector( ( state ) =>
-		getIsGlobalSiteViewEnabled( state, siteId )
-	);
 	const isP2 = site?.options?.is_wpforteams_site;
 
 	const { data: layout, isLoading, error: homeLayoutError } = useHomeLayoutQuery( siteId );
@@ -130,6 +124,19 @@ const Home = ( {
 		}
 	}, [ emailDnsDiagnostics ] );
 
+	useEffect( () => {
+		const studioSiteId = getQueryArgs().studioSiteId;
+		if ( ! studioSiteId ) {
+			return;
+		}
+		const studioSiteUrl = `wpcom-local-dev://sync-connect-site?studioSiteId=${ studioSiteId }&remoteSiteId=${ siteId }`;
+		recordTracksEvent( 'calypso_studio_sync_connect_site', {
+			remoteSiteId: siteId,
+			click: false,
+		} );
+		window.location.href = studioSiteUrl;
+	}, [ siteId ] );
+
 	const isFirstSecondaryCardInPrimaryLocation =
 		Array.isArray( layout?.primary ) &&
 		layout.primary.length === 0 &&
@@ -158,10 +165,10 @@ const Home = ( {
 
 	const headerActions = (
 		<>
-			<Button href={ site.URL } onClick={ trackViewSiteAction } target="_blank">
-				{ isGlobalSiteViewEnabled ? translate( 'View site' ) : translate( 'Visit site' ) }
+			<Button href={ site.URL } onClick={ trackViewSiteAction }>
+				{ translate( 'View site' ) }
 			</Button>
-			{ config.isEnabled( 'layout/dotcom-nav-redesign-v2' ) && isAdmin && ! isP2 && (
+			{ isAdmin && ! isP2 && (
 				<Button primary href={ `/overview/${ site.slug }` }>
 					{ translate( 'Hosting Overview' ) }
 				</Button>
@@ -184,13 +191,13 @@ const Home = ( {
 				<SiteIcon site={ site } size={ 58 } />
 				<div className="customer-home__site-info">
 					<div className="customer-home__site-title">{ site.name }</div>
-					<ExternalLink
+					<a
 						href={ site.URL }
 						className="customer-home__site-domain"
 						onClick={ trackViewSiteAction }
 					>
 						<span className="customer-home__site-domain-text">{ site.domain }</span>
-					</ExternalLink>
+					</a>
 				</div>
 			</div>
 		</div>
@@ -259,6 +266,35 @@ const Home = ( {
 		);
 	};
 
+	const renderStudioSyncNotice = () => {
+		const studioSiteId = getQueryArgs().studioSiteId;
+		if ( ! studioSiteId ) {
+			return null;
+		}
+		const studioSiteUrl = `wpcom-local-dev://sync-connect-site?studioSiteId=${ studioSiteId }&remoteSiteId=${ siteId }`;
+
+		return (
+			<Notice
+				text={ translate( 'Connect to your Studio site to start syncing.' ) }
+				icon="sync"
+				showDismiss={ false }
+				status="is-info"
+			>
+				<NoticeAction
+					onClick={ () => {
+						recordTracksEvent( 'calypso_studio_sync_connect_site', {
+							remoteSiteId: siteId,
+							click: true,
+						} );
+						window.location.href = studioSiteUrl;
+					} }
+				>
+					{ translate( 'Connect Studio' ) }
+				</NoticeAction>
+			</Notice>
+		);
+	};
+
 	return (
 		<Main wideLayout className="customer-home__main">
 			<PageViewTracker path="/home/:site" title={ translate( 'My Home' ) } />
@@ -277,6 +313,7 @@ const Home = ( {
 				/>
 			) : null }
 
+			{ renderStudioSyncNotice() }
 			{ renderUnverifiedEmailNotice() }
 			{ renderDnsSettingsDiagnosticNotice() }
 

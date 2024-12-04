@@ -1,7 +1,7 @@
 import { combineReducers } from '@wordpress/data';
 import { SiteDetails } from '../site';
 import type { HelpCenterAction } from './actions';
-import type { HelpCenterSite } from './types';
+import type { SupportInteraction } from '@automattic/odie-client/src/types';
 import type { Reducer } from 'redux';
 
 const showHelpCenter: Reducer< boolean | undefined, HelpCenterAction > = ( state, action ) => {
@@ -42,6 +42,16 @@ const hasSeenWhatsNewModal: Reducer< boolean | undefined, HelpCenterAction > = (
 	return state;
 };
 
+const currentSupportInteraction: Reducer< SupportInteraction | undefined, HelpCenterAction > = (
+	state,
+	action
+) => {
+	if ( action.type === 'HELP_CENTER_SET_CURRENT_SUPPORT_INTERACTION' ) {
+		return action.supportInteraction;
+	}
+	return state;
+};
+
 const isMinimized: Reducer< boolean, HelpCenterAction > = ( state = false, action ) => {
 	switch ( action.type ) {
 		case 'HELP_CENTER_SET_MINIMIZED':
@@ -50,11 +60,18 @@ const isMinimized: Reducer< boolean, HelpCenterAction > = ( state = false, actio
 	return state;
 };
 
-const site: Reducer< HelpCenterSite | undefined, HelpCenterAction > = ( state, action ) => {
-	if ( action.type === 'HELP_CENTER_RESET_STORE' ) {
-		return undefined;
-	} else if ( action.type === 'HELP_CENTER_SET_SITE' ) {
-		return action.site;
+const isChatLoaded: Reducer< boolean, HelpCenterAction > = ( state = false, action ) => {
+	switch ( action.type ) {
+		case 'HELP_CENTER_SET_IS_CHAT_LOADED':
+			return action.isChatLoaded;
+	}
+	return state;
+};
+
+const zendeskClientId: Reducer< string, HelpCenterAction > = ( state = '', action ) => {
+	switch ( action.type ) {
+		case 'HELP_CENTER_SET_ZENDESK_CLIENT_ID':
+			return action.zendeskClientId;
 	}
 	return state;
 };
@@ -107,26 +124,47 @@ const userDeclaredSite: Reducer< SiteDetails | undefined, HelpCenterAction > = (
 	return state;
 };
 
-const initialRoute: Reducer< string | undefined, HelpCenterAction > = ( state, action ) => {
-	if ( action.type === 'HELP_CENTER_SET_INITIAL_ROUTE' ) {
+const navigateToRoute: Reducer< string | undefined, HelpCenterAction > = ( state, action ) => {
+	if ( action.type === 'HELP_CENTER_SET_NAVIGATE_TO_ROUTE' ) {
 		return action.route;
 	}
 	return state;
 };
 
+const odieInitialPromptText: Reducer< string | undefined, HelpCenterAction > = (
+	state,
+	action
+) => {
+	if ( action.type === 'HELP_CENTER_SET_ODIE_INITIAL_PROMPT_TEXT' ) {
+		return action.text;
+	}
+	return state;
+};
+
+const odieBotNameSlug: Reducer< string | undefined, HelpCenterAction > = ( state, action ) => {
+	if ( action.type === 'HELP_CENTER_SET_ODIE_BOT_NAME_SLUG' ) {
+		return action.odieBotNameSlug;
+	}
+	return state;
+};
+
 const reducer = combineReducers( {
+	currentSupportInteraction,
 	showHelpCenter,
 	showMessagingLauncher,
 	showMessagingWidget,
-	site,
 	subject,
 	message,
 	userDeclaredSite,
 	userDeclaredSiteUrl,
 	hasSeenWhatsNewModal,
 	isMinimized,
+	isChatLoaded,
+	zendeskClientId,
 	unreadCount,
-	initialRoute,
+	navigateToRoute,
+	odieInitialPromptText,
+	odieBotNameSlug,
 } );
 
 export type State = ReturnType< typeof reducer >;

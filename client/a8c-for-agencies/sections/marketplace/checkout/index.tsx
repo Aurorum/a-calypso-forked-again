@@ -3,7 +3,7 @@ import { Button } from '@automattic/components';
 import { getQueryArg } from '@wordpress/url';
 import clsx from 'clsx';
 import { useTranslate } from 'i18n-calypso';
-import { useCallback, useMemo, useContext } from 'react';
+import { useCallback, useMemo, useContext, useEffect, useRef, useState } from 'react';
 import Layout from 'calypso/a8c-for-agencies/components/layout';
 import LayoutBody from 'calypso/a8c-for-agencies/components/layout/body';
 import LayoutHeader, {
@@ -16,6 +16,7 @@ import {
 	A4A_SITES_LINK,
 } from 'calypso/a8c-for-agencies/components/sidebar-menu/lib/constants';
 import { useDispatch, useSelector } from 'calypso/state';
+import { getActiveAgency } from 'calypso/state/a8c-for-agencies/agency/selectors';
 import { recordTracksEvent } from 'calypso/state/analytics/actions';
 import getSites from 'calypso/state/selectors/get-sites';
 import useFetchClientReferral from '../../client/hooks/use-fetch-client-referral';
@@ -23,9 +24,12 @@ import { MarketplaceTypeContext } from '../context';
 import withMarketplaceType, { MARKETPLACE_TYPE_REFERRAL } from '../hoc/with-marketplace-type';
 import useProductsById from '../hooks/use-products-by-id';
 import useProductsBySlug from '../hooks/use-products-by-slug';
+import useReferralDevSite from '../hooks/use-referral-dev-site';
 import useShoppingCart from '../hooks/use-shopping-cart';
 import { getClientReferralQueryArgs } from '../lib/get-client-referral-query-args';
 import useSubmitForm from '../products-overview/product-listing/hooks/use-submit-form';
+import NoticeSummary from './notice-summary';
+import PendingPaymentPopover from './pending-payment-popover';
 import PricingSummary from './pricing-summary';
 import ProductInfo from './product-info';
 import RequestClientPayment from './request-client-payment';
@@ -34,14 +38,25 @@ import type { ShoppingCartItem } from '../types';
 
 import './style.scss';
 
-function Checkout( { isClient }: { isClient?: boolean } ) {
+interface Props {
+	isClient?: boolean;
+	referralBlogId?: number;
+}
+
+function Checkout( { isClient, referralBlogId }: Props ) {
 	const translate = useTranslate();
 	const dispatch = useDispatch();
+	const agency = useSelector( getActiveAgency );
+
+	const canIssueLicenses = agency?.can_issue_licenses ?? true;
+	const [ showPopover, setShowPopover ] = useState( false );
+	const wrapperRef = useRef< HTMLButtonElement | null >( null );
 
 	const { marketplaceType } = useContext( MarketplaceTypeContext );
 	const isAutomatedReferrals = marketplaceType === MARKETPLACE_TYPE_REFERRAL;
 
-	const { selectedCartItems, onRemoveCartItem, onClearCart } = useShoppingCart();
+	const { selectedCartItems, onRemoveCartItem, onClearCart, setSelectedCartItems } =
+		useShoppingCart();
 
 	// Fetch selected products by slug for site checkout
 	const { selectedProductsBySlug } = useProductsBySlug();
@@ -118,31 +133,75 @@ function Checkout( { isClient }: { isClient?: boolean } ) {
 		page( A4A_SITES_LINK );
 	}, [ dispatch ] );
 
+	const { addReferralPlanToCart, isLoading: isLoadingReferralDevSite } = useReferralDevSite(
+		selectedCartItems,
+		setSelectedCartItems,
+		referralBlogId
+	);
+
+	useEffect( () => {
+		// When the referralBlogId is present, add the referral plan to the cart.
+		if ( referralBlogId && ! isLoadingReferralDevSite ) {
+			addReferralPlanToCart();
+		}
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [ isLoadingReferralDevSite ] );
+
 	const title = isAutomatedReferrals ? translate( 'Referral checkout' ) : translate( 'Checkout' );
 
+	const handleShowPopover = () => {
+		if ( ! canIssueLicenses ) {
+			setShowPopover( true );
+		}
+	};
+
 	let actionContent = (
-		<div className="checkout__aside-actions">
-			<Button
-				primary
-				onClick={ onCheckout }
-				disabled={ ! checkoutItems.length || ! isReady }
-				busy={ ! isReady }
-			>
-				{ translate( 'Purchase' ) }
-			</Button>
+		<>
+			<NoticeSummary type="agency-purchase" />
 
-			{ siteId ? (
-				<Button onClick={ cancelPurchase }>{ translate( 'Cancel' ) }</Button>
-			) : (
-				<>
-					<Button onClick={ onContinueShopping }>{ translate( 'Continue shopping' ) }</Button>
-
-					<Button borderless onClick={ onEmptyCart }>
-						{ translate( 'Empty cart' ) }
+			<div className="checkout__aside-actions">
+				<span
+					role="button"
+					tabIndex={ 0 }
+					className="checkout__aside-actions-wrapper"
+					onMouseEnter={ handleShowPopover }
+					onClick={ handleShowPopover }
+					onKeyUp={ ( event ) => {
+						if ( event.key === 'Enter' || event.key === ' ' ) {
+							handleShowPopover;
+						}
+					} }
+				>
+					<Button
+						primary
+						onClick={ onCheckout }
+						disabled={ ! checkoutItems.length || ! isReady || ! canIssueLicenses }
+						busy={ ! isReady }
+						ref={ wrapperRef }
+					>
+						{ translate( 'Purchase' ) }
 					</Button>
-				</>
-			) }
-		</div>
+				</span>
+
+				{ siteId ? (
+					<Button onClick={ cancelPurchase }>{ translate( 'Cancel' ) }</Button>
+				) : (
+					<>
+						<Button onClick={ onContinueShopping }>{ translate( 'Continue shopping' ) }</Button>
+
+						<Button borderless onClick={ onEmptyCart }>
+							{ translate( 'Empty cart' ) }
+						</Button>
+					</>
+				) }
+				{ showPopover && (
+					<PendingPaymentPopover
+						wrapperRef={ wrapperRef }
+						hidePopover={ () => setShowPopover( false ) }
+					/>
+				) }
+			</div>
+		</>
 	);
 
 	if ( isAutomatedReferrals ) {
@@ -159,7 +218,6 @@ function Checkout( { isClient }: { isClient?: boolean } ) {
 			title={ title }
 			wide
 			withBorder={ ! isClient }
-			compact
 			sidebarNavigation={ ! isClient && <MobileSidebarNavigation /> }
 		>
 			{ isClient ? null : (
@@ -185,12 +243,16 @@ function Checkout( { isClient }: { isClient?: boolean } ) {
 						<h1 className="checkout__main-title">{ title }</h1>
 
 						<div className="checkout__main-list">
-							{ checkoutItems.map( ( items ) => (
-								<ProductInfo
-									key={ `product-info-${ items.product_id }-${ items.quantity }` }
-									product={ items }
-								/>
-							) ) }
+							{ referralBlogId && isLoadingReferralDevSite ? (
+								<div className="product-info__placeholder"></div>
+							) : (
+								checkoutItems.map( ( items ) => (
+									<ProductInfo
+										key={ `product-info-${ items.product_id }-${ items.quantity }` }
+										product={ items }
+									/>
+								) )
+							) }
 						</div>
 					</div>
 					<div

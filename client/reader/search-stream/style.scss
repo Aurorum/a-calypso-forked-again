@@ -24,9 +24,6 @@
 	.layout__content {
 		background: var(--studio-white);
 	}
-	.main.search-stream {
-		padding-inline: 0;
-	}
 }
 
 
@@ -422,10 +419,6 @@
 	.comment-button__label-status,
 	.like-button__label-status {
 		@include hide-content-accessibly();
-	}
-
-	.reader-share__button {
-		top: 2px;
 	}
 }
 

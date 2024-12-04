@@ -1,6 +1,5 @@
 import config from '@automattic/calypso-config';
 import page from '@automattic/calypso-router';
-import { isOnboardingGuidedFlow } from '@automattic/onboarding';
 import { isEmpty } from 'lodash';
 import { createElement } from 'react';
 import store from 'store';
@@ -9,13 +8,13 @@ import { recordPageView } from 'calypso/lib/analytics/page-view';
 import { loadExperimentAssignment } from 'calypso/lib/explat';
 import { login } from 'calypso/lib/paths';
 import { sectionify } from 'calypso/lib/route';
-import wpcom from 'calypso/lib/wp';
 import flows from 'calypso/signup/config/flows';
 import { isUserLoggedIn } from 'calypso/state/current-user/selectors';
 import { updateDependencies } from 'calypso/state/signup/actions';
 import { getSignupDependencyStore } from 'calypso/state/signup/dependency-store/selectors';
 import { setCurrentFlowName, setPreviousFlowName } from 'calypso/state/signup/flow/actions';
 import { getCurrentFlowName } from 'calypso/state/signup/flow/selectors';
+import { submitSignupStep } from 'calypso/state/signup/progress/actions';
 import { getSignupProgress } from 'calypso/state/signup/progress/selectors';
 import { requestSite } from 'calypso/state/sites/actions';
 import { getSiteId } from 'calypso/state/sites/selectors';
@@ -26,6 +25,7 @@ import { isReskinnedFlow } from './is-flow';
 import SignupComponent from './main';
 import {
 	retrieveSignupDestination,
+	getDomainsDependencies,
 	clearSignupDestinationCookie,
 	getSignupCompleteFlowName,
 	wasSignupCheckoutPageUnloaded,
@@ -40,7 +40,6 @@ import {
 	getFlowPageTitle,
 	shouldForceLogin,
 } from './utils';
-
 /**
  * Constants
  */
@@ -66,14 +65,6 @@ export const addVideoPressSignupClassName = () => {
 	}
 
 	document.body.classList.add( 'is-videopress-signup' );
-};
-
-export const addVideoPressTvSignupClassName = () => {
-	if ( ! document ) {
-		return;
-	}
-
-	document.body.classList.add( 'is-videopress-tv-signup' );
 };
 
 export const addP2SignupClassName = () => {
@@ -106,17 +97,12 @@ export default {
 			context.pathname.indexOf( 'launch-only' ) >= 0 ||
 			context.params.flowName === 'account' ||
 			context.params.flowName === 'crowdsignal' ||
-			context.params.flowName === 'pressable-nux' ||
 			context.params.flowName === 'clone-site'
 		) {
 			removeWhiteBackground();
 			next();
 		} else if ( context.pathname.includes( 'p2' ) ) {
 			addP2SignupClassName();
-			removeWhiteBackground();
-			next();
-		} else if ( context.query.flow === 'videopress-tv' ) {
-			addVideoPressTvSignupClassName();
 			removeWhiteBackground();
 			next();
 		} else if ( context.pathname.includes( 'videopress' ) ) {
@@ -230,17 +216,37 @@ export default {
 		store.set( 'signup-locale', localeFromParams );
 
 		const isOnboardingFlow = flowName === 'onboarding';
-
-		// See: 1113-gh-Automattic/experimentation-platform for details.
-		if ( isOnboardingFlow || isOnboardingGuidedFlow( flowName ) ) {
-			// `isTokenLoaded` covers users who just logged in.
-			if ( wpcom.isTokenLoaded() || userLoggedIn ) {
-				const trailMapExperimentAssignment = await loadExperimentAssignment(
-					'calypso_signup_onboarding_trailmap_guided_flow'
-				);
-				initialContext.trailMapExperimentVariant = trailMapExperimentAssignment.variationName;
+		if ( isOnboardingFlow ) {
+			const stepperOnboardingExperimentAssignment = await loadExperimentAssignment(
+				'calypso_signup_onboarding_stepper_flow_2'
+			);
+			if ( stepperOnboardingExperimentAssignment.variationName === 'stepper' ) {
+				window.location =
+					getStepUrl(
+						flowName,
+						getStepName( context.params ),
+						getStepSectionName( context.params ),
+						localeFromParams ?? localeFromStore,
+						null,
+						'/setup'
+					) +
+					( context.querystring ? '?' + context.querystring : '' ) +
+					( context.hashstring ? '#' + context.hashstring : '' );
+				return;
 			}
 		}
+
+		// const isOnboardingFlow = flowName === 'onboarding';
+		// // See: 1113-gh-Automattic/experimentation-platform for details.
+		// if ( isOnboardingFlow || isOnboardingGuidedFlow( flowName ) ) {
+		// 	// `isTokenLoaded` covers users who just logged in.
+		// 	if ( wpcom.isTokenLoaded() || userLoggedIn ) {
+		// 		const trailMapExperimentAssignment = await loadExperimentAssignment(
+		// 			'calypso_signup_onboarding_trailmap_guided_flow'
+		// 		);
+		// 		initialContext.trailMapExperimentVariant = trailMapExperimentAssignment.variationName;
+		// 	}
+		// }
 
 		if ( context.pathname !== getValidPath( context.params, userLoggedIn ) ) {
 			return page.redirect(
@@ -273,7 +279,7 @@ export default {
 			initialContext = context;
 		}
 
-		const { query, trailMapExperimentVariant } = initialContext;
+		const { query } = initialContext;
 
 		// wait for the step component module to load
 		const stepComponent = await getStepComponent( stepName );
@@ -283,9 +289,10 @@ export default {
 		};
 
 		// Clean me up after the experiment is over (see: pdDR7T-1xi-p2)
-		if ( isOnboardingGuidedFlow( flowName ) ) {
-			params.trailmap_variant = trailMapExperimentVariant || 'control';
-		}
+		// This is kept for documentation purposes.
+		// if ( isOnboardingGuidedFlow( flowName ) ) {
+		// 	params.trailmap_variant = initialContext.trailMapExperimentVariant || 'control';
+		// }
 
 		recordPageView( basePath, basePageTitle + ' > Start > ' + flowName + ' > ' + stepName, params );
 
@@ -308,6 +315,21 @@ export default {
 			wasSignupCheckoutPageUnloaded() && signupDestinationCookieExists && isReEnteringFlow;
 		const isManageSiteFlow =
 			! excludeFromManageSiteFlows && ! isAddNewSiteFlow && isReEnteringSignupViaBrowserBack;
+
+		// Hydrate the store with domains dependencies from session storage,
+		// only in the onboarding flow.
+		const domainsDependencies = getDomainsDependencies();
+		if (
+			domainsDependencies &&
+			isManageSiteFlow &&
+			flowName === 'onboarding' &&
+			stepName !== 'domains'
+		) {
+			const { step, dependencies } = JSON.parse( domainsDependencies );
+			if ( step && dependencies ) {
+				context.store.dispatch( submitSignupStep( step, dependencies ) );
+			}
+		}
 
 		// If the flow has siteId or siteSlug as query dependencies, we should not clear selected site id
 		if (

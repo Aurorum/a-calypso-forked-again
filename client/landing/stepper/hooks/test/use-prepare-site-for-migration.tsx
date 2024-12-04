@@ -6,6 +6,13 @@ import { renderHook, waitFor } from '@testing-library/react';
 import nock from 'nock';
 import React from 'react';
 import { usePrepareSiteForMigration } from '../use-prepare-site-for-migration';
+import { replyWithError, replyWithSuccess } from './helpers/nock';
+
+jest.mock( '@automattic/calypso-config', () => {
+	const mock = () => '';
+	mock.isEnabled = jest.fn();
+	return mock;
+} );
 
 const TRANSFER_ACTIVE = ( siteId: number ) => ( {
 	atomic_transfer_id: '1253811',
@@ -19,7 +26,14 @@ const TRANSFER_COMPLETED = ( siteId: number ) => ( {
 	status: 'completed',
 } );
 
-describe( 'usePrepareSiteForMigration', () => {
+const errorCaptureMigrationKey = replyWithError( {
+	error: 'anyError',
+} );
+
+jest.mock( 'calypso/lib/analytics/tracks' );
+jest.mock( 'calypso/lib/logstash' );
+
+describe( 'usePrepareSiteForMigrationWithMigrateGuru', () => {
 	beforeAll( () => nock.disableNetConnect() );
 	beforeEach( () => nock.cleanAll() );
 
@@ -109,13 +123,13 @@ describe( 'usePrepareSiteForMigration', () => {
 			.reply( 200, TRANSFER_COMPLETED( siteId ) )
 			.get( `/rest/v1.2/sites/${ siteId }/plugins?http_envelope=1` )
 			.reply( 200, { plugins: [] } )
-			.post( `/rest/v1.2/sites/${ siteId }/plugins/migrate-guru/install` )
-			.reply( 200 )
+			.post( `/rest/v1.2/sites/${ siteId }/plugins/migrate-guru/install?http_envelope=1` )
+			.reply( replyWithSuccess() )
 			.post( `/rest/v1.2/sites/${ siteId }/plugins/migrate-guru%2Fmigrateguru` )
-			.reply( 200 )
+			.reply( replyWithSuccess() )
 			.get( `/wpcom/v2/sites/${ siteId }/atomic-migration-status/migrate-guru-key` )
 			.query( { http_envelope: 1 } )
-			.reply( 200, { migration_key: 'some-migration-key' } );
+			.reply( replyWithSuccess( { migration_key: 'some-migration-key' } ) );
 
 		const { result } = render( { siteId: 123 } );
 
@@ -144,13 +158,12 @@ describe( 'usePrepareSiteForMigration', () => {
 			.reply( 200, TRANSFER_COMPLETED( siteId ) )
 			.get( `/rest/v1.2/sites/${ siteId }/plugins?http_envelope=1` )
 			.reply( 200, { plugins: [] } )
-			.post( `/rest/v1.2/sites/${ siteId }/plugins/migrate-guru/install` )
-			.reply( 200 )
+			.post( `/rest/v1.2/sites/${ siteId }/plugins/migrate-guru/install?http_envelope=1` )
+			.reply( replyWithSuccess() )
 			.post( `/rest/v1.2/sites/${ siteId }/plugins/migrate-guru%2Fmigrateguru` )
 			.reply( 200 )
 			.get( `/wpcom/v2/sites/${ siteId }/atomic-migration-status/migrate-guru-key` )
-			.query( { http_envelope: 1 } )
-			.reply( 500, new Error( 'Internal Server Error' ) );
+			.reply( errorCaptureMigrationKey );
 
 		const { result } = render( { siteId: 123 } );
 

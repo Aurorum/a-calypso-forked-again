@@ -19,5 +19,9 @@ export type SiteExcerptData = Pick<
 > & {
 	title: string;
 	is_deleted?: boolean;
+	is_a4a_dev_site?: boolean;
 	options?: Pick< SiteDetailsOptions, ( typeof SITE_EXCERPT_REQUEST_OPTIONS )[ number ] >;
+	site_migration?: {
+		migration_status?: string;
+	};
 };

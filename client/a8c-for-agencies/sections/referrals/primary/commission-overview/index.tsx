@@ -10,11 +10,11 @@ import LayoutHeader, {
 import LayoutTop from 'calypso/a8c-for-agencies/components/layout/top';
 import MobileSidebarNavigation from 'calypso/a8c-for-agencies/components/sidebar/mobile-sidebar-navigation';
 import { A4A_REFERRALS_LINK } from 'calypso/a8c-for-agencies/components/sidebar-menu/lib/constants';
+import StepSection from 'calypso/a8c-for-agencies/components/step-section';
 import pressableIcon from 'calypso/assets/images/pressable/pressable-icon.svg';
 import JetpackLogo from 'calypso/components/jetpack-logo';
 import WooCommerceLogo from 'calypso/components/woocommerce-logo';
 import WordPressLogo from 'calypso/components/wordpress-logo';
-import StepSection from '../../common/step-section';
 import ReferralsFooter from '../footer';
 
 import './style.scss';
@@ -86,10 +86,12 @@ export default function CommissionOverview( {
 					<StepSection heading={ translate( 'How much can I earn?' ) }>
 						<FoldableCard
 							header={
-								<div className="commission-overview__heading">
-									<WooCommerceLogo className="woocommerce-logo" size={ 40 } />
-									{ translate( 'WooPayments revenue share' ) }
-								</div>
+								<>
+									<div className="a4a-overview-hosting__logo-container">
+										<WooCommerceLogo className="woocommerce-logo" size={ 40 } />
+									</div>
+									<div>{ translate( 'WooPayments revenue share' ) }</div>
+								</>
 							}
 							expanded
 							clickableHeader
@@ -103,15 +105,20 @@ export default function CommissionOverview( {
 
 						<FoldableCard
 							header={
-								<div className="commission-overview__heading">
-									<img src={ pressableIcon } alt="Pressable" />
-									<WordPressLogo className="a4a-overview-hosting__wp-logo" size={ 24 } />
-									{ translate( 'Hosting revenue share (WordPress.com and{{nbsp/}}Pressable)', {
-										components: {
-											nbsp: <>&nbsp;</>,
-										},
-									} ) }
-								</div>
+								<>
+									<div className="a4a-overview-hosting__logo-container">
+										<img className="pressable-icon" src={ pressableIcon } alt="Pressable" />
+										<WordPressLogo className="a4a-overview-hosting__wp-logo" size={ 24 } />
+									</div>
+
+									<div>
+										{ translate( 'Hosting revenue share (WordPress.com and{{nbsp/}}Pressable)', {
+											components: {
+												nbsp: <>&nbsp;</>,
+											},
+										} ) }
+									</div>
+								</>
 							}
 							expanded
 							clickableHeader
@@ -124,16 +131,21 @@ export default function CommissionOverview( {
 
 						<FoldableCard
 							header={
-								<div className="commission-overview__heading">
-									<JetpackLogo className="jetpack-logo" size={ 24 } />
-									<WooCommerceLogo className="woocommerce-logo" size={ 40 } />
-									{ translate( 'Jetpack products and Woo{{8209/}}owned{{nbsp/}}extensions', {
-										components: {
-											nbsp: <>&nbsp;</>,
-											8209: <>&#8209;</>,
-										},
-									} ) }
-								</div>
+								<>
+									<div className="a4a-overview-hosting__logo-container">
+										<JetpackLogo className="jetpack-logo" size={ 24 } />
+										<WooCommerceLogo className="woocommerce-logo" size={ 40 } />
+									</div>
+
+									<div>
+										{ translate( 'Jetpack products and Woo{{8209/}}owned{{nbsp/}}extensions', {
+											components: {
+												nbsp: <>&nbsp;</>,
+												8209: <>&#8209;</>,
+											},
+										} ) }
+									</div>
+								</>
 							}
 							expanded
 							clickableHeader

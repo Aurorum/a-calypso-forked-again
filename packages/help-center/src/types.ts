@@ -1,3 +1,4 @@
+import type { useOpeningCoordinates } from './hooks/use-opening-coordinates';
 import type { HelpCenterSite, SiteDetails } from '@automattic/data-stores';
 import type { ReactElement } from 'react';
 
@@ -7,6 +8,22 @@ export interface Container {
 	isLoading?: boolean;
 	hidden?: boolean;
 	currentRoute?: string;
+	openingCoordinates?: ReturnType< typeof useOpeningCoordinates >;
+	shouldUseHelpCenterExperience?: boolean;
+}
+
+export interface PostObject {
+	content: string;
+	title: string;
+	URL: string;
+	ID: number;
+	site_ID: number;
+	slug: string;
+}
+
+export interface ArticleContentProps {
+	post?: PostObject;
+	isLoading?: boolean;
 }
 
 export interface Header {
@@ -18,11 +35,8 @@ export interface Header {
 
 export interface SitePicker {
 	ownershipResult: AnalysisReport;
-	setSitePickerChoice: any;
-	sitePickerChoice: string;
-	currentSite: HelpCenterSite | undefined;
-	siteId: string | number | null | undefined;
-	sitePickerEnabled: boolean;
+	isSelfDeclaredSite: boolean;
+	onSelfDeclaredSite: ( selfDeclared: boolean ) => void;
 }
 
 export interface Article {
@@ -67,16 +81,6 @@ export interface SupportTicket {
 	when: string;
 }
 
-export interface MessagingAuth {
-	user: {
-		jwt: string;
-	};
-}
-
-export interface MessagingAvailability {
-	is_available: boolean;
-}
-
 export type Mode = 'CHAT' | 'EMAIL' | 'FORUM';
 
 interface Availability {
@@ -87,6 +91,7 @@ interface Availability {
 
 interface Eligibility {
 	is_user_eligible: boolean;
+	wapuu_assistant_enabled: boolean;
 	support_level:
 		| 'free'
 		| 'personal'
@@ -128,3 +133,5 @@ export type AnalysisReport = {
 	siteURL: string | undefined;
 	isWpcom: boolean;
 };
+
+export type ContactOption = 'chat' | 'email';

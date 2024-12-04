@@ -1,6 +1,6 @@
 import { useTranslate } from 'i18n-calypso';
 import { ReactNode } from 'react';
-import StatusBadge from '../common/step-section-item/status-badge';
+import StatusBadge from 'calypso/a8c-for-agencies/components/step-section-item/status-badge';
 import type { Referral } from '../types';
 
 export default function SubscriptionStatus( { item }: { item: Referral } ): ReactNode {
@@ -10,22 +10,46 @@ export default function SubscriptionStatus( { item }: { item: Referral } ): Reac
 		item: Referral
 	): {
 		status: string | null;
-		type: 'warning' | 'success' | 'info' | null;
+		type: 'warning' | 'success' | 'info' | 'error' | null;
+		tooltip?: string | JSX.Element;
 	} => {
-		if ( ! item.statuses.length ) {
+		if ( ! item.purchaseStatuses.length ) {
 			return {
 				status: null,
 				type: null,
 			};
 		}
 
-		const status = item.statuses.reduce( ( prev, curr ) => {
-			if ( prev === curr ) {
-				return curr;
-			}
+		const { pendingCount, activeCount, canceledCount, overallStatus } =
+			item.purchaseStatuses.reduce(
+				( acc, status ) => {
+					if ( status === 'pending' ) {
+						acc.pendingCount++;
+					}
+					if ( status === 'active' ) {
+						acc.activeCount++;
+					}
+					if ( status === 'canceled' ) {
+						acc.canceledCount++;
+					}
 
-			return 'mixed';
-		}, item.statuses[ 0 ] );
+					if ( ! acc.overallStatus ) {
+						acc.overallStatus = status;
+					} else if ( acc.overallStatus !== status ) {
+						acc.overallStatus = 'mixed';
+					}
+
+					return acc;
+				},
+				{ pendingCount: 0, activeCount: 0, canceledCount: 0, overallStatus: '' }
+			);
+
+		let status = overallStatus || 'mixed';
+
+		// If the referral is archived, override the status.
+		if ( item.referralStatuses.includes( 'archived' ) ) {
+			status = 'archived';
+		}
 
 		switch ( status ) {
 			case 'active':
@@ -43,15 +67,43 @@ export default function SubscriptionStatus( { item }: { item: Referral } ): Reac
 					status: translate( 'Canceled' ),
 					type: 'info',
 				};
+			case 'archived':
+				return {
+					status: translate( 'Archived' ),
+					type: 'info',
+				};
 			default:
 				return {
 					status: translate( 'Mixed' ),
 					type: 'warning',
+					tooltip: (
+						<div>
+							<ul>
+								<li>
+									{ translate( 'Active: %(activeCount)d', {
+										args: { activeCount },
+									} ) }
+								</li>
+								<li>
+									{ translate( 'Pending: %(pendingCount)d', {
+										args: { pendingCount },
+									} ) }
+								</li>
+								<li>
+									{ translate( 'Canceled: %(canceledCount)d', {
+										args: { canceledCount },
+									} ) }
+								</li>
+							</ul>
+						</div>
+					),
 				};
 		}
 	};
 
-	const { status, type } = getStatus( item );
+	const { status, type, tooltip } = getStatus( item );
 
-	return status && type ? <StatusBadge statusProps={ { children: status, type } } /> : null;
+	return status && type ? (
+		<StatusBadge statusProps={ { children: status, type, tooltip } } />
+	) : null;
 }

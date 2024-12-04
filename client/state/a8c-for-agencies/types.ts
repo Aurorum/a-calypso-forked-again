@@ -1,5 +1,7 @@
 import { Action, AnyAction } from 'redux';
 import { ThunkAction } from 'redux-thunk';
+import { DirectoryApplicationType } from 'calypso/a8c-for-agencies/sections/partner-directory/types';
+import type { AgencyTier } from 'calypso/a8c-for-agencies/sections/agency-tier/types';
 
 export interface APIError {
 	status: number;
@@ -22,6 +24,15 @@ export interface Agency {
 			email: string;
 			name: string;
 			pressable_id: number;
+			usage?: null | {
+				status: string;
+				storage_gb: number;
+				visits_count: number;
+				sites_count: number;
+				start_date: string;
+				end_date: string;
+				created_at: number;
+			};
 		};
 	};
 	profile: {
@@ -36,7 +47,8 @@ export interface Agency {
 		};
 		listing_details: {
 			is_available: boolean;
-			industry: string;
+			is_global: boolean;
+			industries: string[];
 			services: string[];
 			products: string[];
 			languages_spoken: string[];
@@ -51,14 +63,39 @@ export interface Agency {
 			status?: 'pending' | 'in-progress' | 'completed';
 			directories: {
 				status: 'pending' | 'approved' | 'rejected' | 'closed';
-				directory: 'wordpress' | 'jetpack' | 'woocommerce' | 'pressable';
-				published: boolean;
+				directory: DirectoryApplicationType;
 				urls: string[];
 				note: string;
 				is_published?: boolean;
 			}[];
 			feedback_url: string;
+			is_published?: boolean;
 		};
+	};
+	partner_directory: {
+		allowed: boolean;
+		directories: DirectoryApplicationType[];
+	};
+	user: {
+		role: 'a4a_administrator' | 'a4a_manager';
+		capabilities: string[];
+	};
+	can_issue_licenses: boolean;
+	notifications:
+		| [
+				{
+					timestamp: number;
+					reference: string;
+				},
+		  ]
+		| [];
+	signup_meta: {
+		number_sites: string;
+	};
+	tier: {
+		id: AgencyTier;
+		label: string;
+		features: string[];
 	};
 }
 
@@ -68,6 +105,7 @@ export interface AgencyStore {
 	activeAgency: Agency | null;
 	agencies: Agency[] | [];
 	error: APIError | null;
+	isAgencyClientUser: boolean;
 }
 
 export type AgencyThunkAction< A extends Action = AnyAction, R = unknown > = ThunkAction<

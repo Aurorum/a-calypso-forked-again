@@ -34,6 +34,9 @@ import {
 	PLAN_JETPACK_COMPLETE_BI_YEARLY,
 	PLAN_JETPACK_COMPLETE,
 	PLAN_JETPACK_COMPLETE_MONTHLY,
+	PLAN_JETPACK_GROWTH_MONTHLY,
+	PLAN_JETPACK_GROWTH_YEARLY,
+	PLAN_JETPACK_GROWTH_BI_YEARLY,
 	PRODUCT_WPCOM_SEARCH,
 	PRODUCT_JETPACK_SEARCH_FREE,
 	PRODUCT_WPCOM_SEARCH_MONTHLY,
@@ -156,6 +159,7 @@ import {
 	PRODUCT_JETPACK_SOCIAL_V1_BI_YEARLY,
 	PRODUCT_JETPACK_SOCIAL_V1_YEARLY,
 	PRODUCT_JETPACK_SOCIAL_V1_MONTHLY,
+	PRODUCT_WOOCOMMERCE_PRODUCT_FILTERS,
 } from './constants';
 import type { FAQ, SelectorProductFeaturesItem } from './types';
 import type { TranslateResult } from 'i18n-calypso';
@@ -241,6 +245,8 @@ export const getJetpackProductsShortNames = (): Record< string, React.ReactEleme
 		[ PRODUCT_JETPACK_STATS_BI_YEARLY ]: 'Stats',
 		[ PRODUCT_JETPACK_STATS_YEARLY ]: 'Stats',
 		[ PRODUCT_JETPACK_STATS_MONTHLY ]: 'Stats',
+		[ PRODUCT_JETPACK_STATS_PWYW_YEARLY ]: 'Stats (Non-commercial license)',
+		[ PRODUCT_JETPACK_STATS_FREE ]: 'Stats (Non-commercial license)',
 		[ PRODUCT_JETPACK_AI_MONTHLY ]: 'AI',
 		[ PRODUCT_JETPACK_AI_YEARLY ]: 'AI',
 		[ PRODUCT_JETPACK_AI_BI_YEARLY ]: 'AI',
@@ -501,6 +507,7 @@ export const getJetpackProductsTaglines = (): Record<
 		[ PRODUCT_JETPACK_SEARCH_BI_YEARLY ]: { default: searchTagline },
 		[ PRODUCT_JETPACK_SEARCH ]: { default: searchTagline },
 		[ PRODUCT_JETPACK_SEARCH_MONTHLY ]: { default: searchTagline },
+		[ PRODUCT_JETPACK_SEARCH_FREE ]: { default: searchTagline },
 		[ PRODUCT_WPCOM_SEARCH ]: { default: searchTagline },
 		[ PRODUCT_WPCOM_SEARCH_MONTHLY ]: { default: searchTagline },
 		[ PRODUCT_JETPACK_STATS_BI_YEARLY ]: { default: statsTagline },
@@ -547,6 +554,14 @@ export const getJetpackProductsTaglines = (): Record<
 			default: backupAddonTagLine,
 			owned: backupAddonOwnedTagLine,
 		},
+		[ PRODUCT_JETPACK_BACKUP_ADDON_STORAGE_3TB_MONTHLY ]: {
+			default: backupAddonTagLine,
+			owned: backupAddonOwnedTagLine,
+		},
+		[ PRODUCT_JETPACK_BACKUP_ADDON_STORAGE_5TB_MONTHLY ]: {
+			default: backupAddonTagLine,
+			owned: backupAddonOwnedTagLine,
+		},
 		[ PRODUCT_JETPACK_BACKUP_ADDON_STORAGE_10GB_YEARLY ]: {
 			default: backupAddonTagLine,
 			owned: backupAddonOwnedTagLine,
@@ -556,6 +571,14 @@ export const getJetpackProductsTaglines = (): Record<
 			owned: backupAddonOwnedTagLine,
 		},
 		[ PRODUCT_JETPACK_BACKUP_ADDON_STORAGE_1TB_YEARLY ]: {
+			default: backupAddonTagLine,
+			owned: backupAddonOwnedTagLine,
+		},
+		[ PRODUCT_JETPACK_BACKUP_ADDON_STORAGE_3TB_YEARLY ]: {
+			default: backupAddonTagLine,
+			owned: backupAddonOwnedTagLine,
+		},
+		[ PRODUCT_JETPACK_BACKUP_ADDON_STORAGE_5TB_YEARLY ]: {
 			default: backupAddonTagLine,
 			owned: backupAddonOwnedTagLine,
 		},
@@ -596,6 +619,15 @@ export const getJetpackProductDisclaimers = (
 		<></>
 	);
 
+	const aiAssistantDisclaimer = translate(
+		'Limits apply for high request capacity. {{link}}Learn more about it here.{{/link}}',
+		{
+			components: {
+				link: getLink(),
+			},
+		}
+	);
+
 	const monitorDisclaimer = translate( 'Limit of 20 SMS per site, each month.' );
 
 	return {
@@ -616,6 +648,9 @@ export const getJetpackProductDisclaimers = (
 		[ PLAN_JETPACK_COMPLETE_MONTHLY ]: backupDisclaimer,
 		[ PRODUCT_JETPACK_MONITOR_YEARLY ]: monitorDisclaimer,
 		[ PRODUCT_JETPACK_MONITOR_MONTHLY ]: monitorDisclaimer,
+		[ PRODUCT_JETPACK_AI_MONTHLY ]: aiAssistantDisclaimer,
+		[ PRODUCT_JETPACK_AI_YEARLY ]: aiAssistantDisclaimer,
+		[ PRODUCT_JETPACK_AI_BI_YEARLY ]: aiAssistantDisclaimer,
 	};
 };
 
@@ -1073,6 +1108,9 @@ export const getJetpackProductsLightboxDescription = (): Record< string, Transla
 	const woocommerceWoopaymentsLightboxDescription = translate(
 		'The only payment solution fully integrated to Woo. Accept credit/debit cards and local payment options with no setup or monthly fees.'
 	);
+	const woocommercProductFiltersLightboxDescription = translate(
+		'This is a tool to create ajax product filters that make the process of finding products in your store simple and fast.'
+	);
 
 	return {
 		[ PRODUCT_JETPACK_AI_MONTHLY ]: aiAssistantLightboxDescription,
@@ -1189,6 +1227,7 @@ export const getJetpackProductsLightboxDescription = (): Record< string, Transla
 			woocommerceAccommodationsBookingsLightboxDescription,
 		[ PRODUCT_WOOCOMMERCE_TAX ]: woocommerceTaxLightboxDescription,
 		[ PRODUCT_WOOCOMMERCE_WOOPAYMENTS ]: woocommerceWoopaymentsLightboxDescription,
+		[ PRODUCT_WOOCOMMERCE_PRODUCT_FILTERS ]: woocommercProductFiltersLightboxDescription,
 	};
 };
 
@@ -1267,6 +1306,7 @@ export const getJetpackProductsWhatIsIncluded = (): Record< string, Array< Trans
 		translate( 'Paywall access' ),
 		translate( 'Newsletter' ),
 		translate( 'Priority support' ),
+		translate( '2% transaction fees' ),
 	];
 	const antiSpamIncludesInfo = [
 		translate( 'Comment and form spam protection' ),
@@ -1334,6 +1374,7 @@ export const getJetpackProductsWhatIsIncluded = (): Record< string, Array< Trans
 	const socialNetworksForSharing = [
 		translate( 'Facebook' ),
 		translate( 'Instagram' ),
+		translate( 'Threads' ),
 		translate( 'LinkedIn' ),
 		translate( 'Mastodon' ),
 		translate( 'Tumblr' ),
@@ -1365,9 +1406,9 @@ export const getJetpackProductsWhatIsIncluded = (): Record< string, Array< Trans
 			args: { socialNetworksList },
 			comment: 'Comma separated list of social networks like "Facebook, Mastodon and Tumblr".',
 		} ),
-		translate( 'Engagement Optimizer' ),
+		translate( 'Upload custom images or videos with your posts' ),
 		translate( 'Recycle content' ),
-		translate( 'Image generator' ),
+		translate( 'Automatically generate images for posts' ),
 	];
 	const socialIncludesInfo = socialAdvancedIncludesInfo;
 	const statsCommercialIncludesInfo = [
@@ -1524,7 +1565,7 @@ export const getJetpackProductsWhatIsIncluded = (): Record< string, Array< Trans
 
 	return {
 		[ PRODUCT_JETPACK_AI_MONTHLY ]: [
-			translate( '100 monthly requests (upgradeable)' ),
+			translate( 'High request capacity *' ),
 			...aiAssistantIncludesInfo,
 		],
 		[ PRODUCT_JETPACK_AI_MONTHLY_100 ]: [
@@ -1548,7 +1589,7 @@ export const getJetpackProductsWhatIsIncluded = (): Record< string, Array< Trans
 			...aiAssistantIncludesInfo,
 		],
 		[ PRODUCT_JETPACK_AI_YEARLY ]: [
-			translate( '100 monthly requests (upgradeable)' ),
+			translate( 'High request capacity *' ),
 			...aiAssistantIncludesInfo,
 		],
 		[ PRODUCT_JETPACK_AI_YEARLY_100 ]: [
@@ -1572,7 +1613,7 @@ export const getJetpackProductsWhatIsIncluded = (): Record< string, Array< Trans
 			...aiAssistantIncludesInfo,
 		],
 		[ PRODUCT_JETPACK_AI_BI_YEARLY ]: [
-			translate( '100 monthly requests (upgradeable)' ),
+			translate( 'High request capacity *' ),
 			...aiAssistantIncludesInfo,
 		],
 		[ PRODUCT_JETPACK_AI_BI_YEARLY_100 ]: [
@@ -2179,6 +2220,15 @@ export const getJetpackPlansAlsoIncludedFeatures = (): Record<
 		translate( 'Downtime monitoring' ),
 		translate( 'CDN (Content Delivery Networks)' ),
 	];
+	const growthPlanIncludesInfo = [
+		translate( 'Display ads with WordAds' ),
+		translate( 'Pay with PayPal' ),
+		translate( 'Paid content gating' ),
+		translate( 'Paywall access' ),
+		translate( 'Newsletter' ),
+		translate( 'Priority support' ),
+		translate( '2% transaction fees' ),
+	];
 
 	return {
 		[ PLAN_JETPACK_SECURITY_T1_MONTHLY ]: [
@@ -2209,6 +2259,9 @@ export const getJetpackPlansAlsoIncludedFeatures = (): Record<
 		[ PLAN_JETPACK_COMPLETE_BI_YEARLY ]: [ ...freeBundleFeatures ],
 		[ PLAN_JETPACK_COMPLETE ]: [ ...freeBundleFeatures ],
 		[ PLAN_JETPACK_COMPLETE_MONTHLY ]: [ ...freeBundleFeatures ],
+		[ PLAN_JETPACK_GROWTH_MONTHLY ]: [ ...growthPlanIncludesInfo, ...freeBundleFeatures ],
+		[ PLAN_JETPACK_GROWTH_YEARLY ]: [ ...growthPlanIncludesInfo, ...freeBundleFeatures ],
+		[ PLAN_JETPACK_GROWTH_BI_YEARLY ]: [ ...growthPlanIncludesInfo, ...freeBundleFeatures ],
 	};
 };
 

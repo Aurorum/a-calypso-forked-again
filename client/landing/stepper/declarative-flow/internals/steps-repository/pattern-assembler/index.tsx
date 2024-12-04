@@ -398,12 +398,9 @@ const PatternAssembler = ( props: StepProps & NoticesProps ) => {
 			Promise.resolve()
 				.then( () =>
 					reduxDispatch(
-						activateOrInstallThenActivate( themeId, site?.ID, 'assembler', false ) as ThunkAction<
-							PromiseLike< string >,
-							any,
-							any,
-							AnyAction
-						>
+						activateOrInstallThenActivate( themeId, site?.ID, {
+							source: 'assembler',
+						} ) as ThunkAction< PromiseLike< string >, any, any, AnyAction >
 					)
 				)
 				.then( ( activeThemeStylesheet: string ) =>
@@ -728,7 +725,10 @@ const PatternAssembler = ( props: StepProps & NoticesProps ) => {
 					/>
 				</NavigatorScreen>
 
-				<NavigatorScreen path={ NAVIGATOR_PATHS.STYLES_COLORS }>
+				<NavigatorScreen
+					path={ NAVIGATOR_PATHS.STYLES_COLORS }
+					style={ { animationDuration: '0s' } }
+				>
 					<ScreenColorPalettes
 						siteId={ site?.ID }
 						stylesheet={ stylesheet }
@@ -736,7 +736,10 @@ const PatternAssembler = ( props: StepProps & NoticesProps ) => {
 						onSelect={ onScreenColorsSelect }
 					/>
 				</NavigatorScreen>
-				<NavigatorScreen path={ NAVIGATOR_PATHS.STYLES_FONTS }>
+				<NavigatorScreen
+					path={ NAVIGATOR_PATHS.STYLES_FONTS }
+					style={ { animationDuration: '0s' } }
+				>
 					<ScreenFontPairings
 						siteId={ site?.ID }
 						stylesheet={ stylesheet }

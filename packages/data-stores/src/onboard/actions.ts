@@ -1,11 +1,10 @@
-import config from '@automattic/calypso-config';
 import { guessTimezone, getLanguage } from '@automattic/i18n-utils';
 import { dispatch, select } from '@wordpress/data-controls';
 import { __ } from '@wordpress/i18n';
 import { STORE_KEY as SITE_STORE } from '../site';
-import { CreateSiteParams, Visibility, NewSiteBlogDetails } from '../site/types';
+import { Visibility } from '../site/types';
 import { SiteGoal, STORE_KEY } from './constants';
-import { ProfilerData } from './types';
+import { ProfilerData, ReadymadeTemplate } from './types';
 import type { DomainTransferData, State } from '.';
 import type { DomainSuggestion } from '../domain-suggestions';
 import type { FeatureId } from '../shared-types';
@@ -30,6 +29,11 @@ export const addFeature = ( featureId: FeatureId ) => ( {
 	featureId,
 } );
 
+export const setSiteUrl = ( siteUrl: string ) => ( {
+	type: 'SET_SITE_URL' as const,
+	siteUrl,
+} );
+
 export interface CreateSiteBaseActionParameters {
 	username: string;
 	languageSlug: string;
@@ -41,95 +45,6 @@ export interface CreateSiteActionParameters extends CreateSiteBaseActionParamete
 	anchorFmPodcastId: string | null;
 	anchorFmEpisodeId: string | null;
 	anchorFmSpotifyUrl: string | null;
-}
-
-export function* createVideoPressSite( {
-	username,
-	languageSlug,
-	visibility = Visibility.PublicNotIndexed,
-}: CreateSiteBaseActionParameters ) {
-	const { domain, selectedDesign, siteTitle, selectedFeatures }: State = yield select(
-		STORE_KEY,
-		'getState'
-	);
-
-	const siteUrl = domain?.domain_name || siteTitle || username;
-	const lang_id = ( getLanguage( languageSlug ) as Language )?.value;
-	const isVideomakerTrial = config.isEnabled( 'videomaker-trial' );
-	const defaultTheme = selectedDesign?.theme || 'premium/videomaker';
-	const legacyVertical = 'premium/videomaker' === defaultTheme ? 'videomaker' : 'videomaker-white';
-	const siteVertical = isVideomakerTrial ? 'videomaker' : legacyVertical;
-	const blogTitle = siteTitle.trim() === '' ? __( 'Site Title' ) : siteTitle;
-	const themeSlug = isVideomakerTrial ? 'pub/videomaker' : 'pub/twentytwentytwo'; // NOTE: keep this a consistent, free theme so post ids during headstart re-run after premium theme switch remain consistent
-
-	const params: CreateSiteParams = {
-		blog_name: siteUrl?.split( '.wordpress' )[ 0 ],
-		blog_title: blogTitle,
-		public: visibility,
-		options: {
-			site_information: {
-				title: blogTitle,
-			},
-			lang_id: lang_id,
-			site_creation_flow: 'videopress',
-			enable_fse: true,
-			theme: themeSlug,
-			timezone_string: guessTimezone(),
-			use_patterns: true,
-			site_vertical_name: siteVertical,
-			selected_features: selectedFeatures,
-			wpcom_public_coming_soon: 1,
-			...( selectedDesign && { is_blank_canvas: isBlankCanvasDesign( selectedDesign ) } ),
-			is_videopress_initial_purchase: ! isVideomakerTrial,
-		},
-	};
-
-	const success: NewSiteBlogDetails | undefined = yield dispatch(
-		SITE_STORE,
-		'createSite',
-		params
-	);
-
-	return success;
-}
-
-export function* createVideoPressTvSite( {
-	languageSlug,
-	visibility = Visibility.PublicNotIndexed,
-}: CreateSiteBaseActionParameters ) {
-	const { selectedDesign, selectedFeatures }: State = yield select( STORE_KEY, 'getState' );
-
-	const lang_id = ( getLanguage( languageSlug ) as Language )?.value;
-	const blogTitle = 'VideoPress TV';
-
-	const params: CreateSiteParams = {
-		blog_name: '', // will be replaced on server with random domain
-		blog_title: blogTitle,
-		public: visibility,
-		options: {
-			site_information: {
-				title: blogTitle,
-			},
-			lang_id: lang_id,
-			site_creation_flow: 'videopress-tv',
-			enable_fse: true,
-			theme: 'pub/videopress-hq',
-			timezone_string: guessTimezone(),
-			use_patterns: true,
-			selected_features: selectedFeatures,
-			wpcom_public_coming_soon: 1,
-			...( selectedDesign && { is_blank_canvas: isBlankCanvasDesign( selectedDesign ) } ),
-			is_videopress_initial_purchase: true,
-		},
-	};
-
-	const success: NewSiteBlogDetails | undefined = yield dispatch(
-		SITE_STORE,
-		'createSite',
-		params
-	);
-
-	return success;
 }
 
 export function* createSenseiSite( {
@@ -157,10 +72,10 @@ export function* createSenseiSite( {
 			lang_id: lang_id,
 			site_creation_flow: 'sensei',
 			enable_fse: true,
-			theme: 'pub/course',
 			timezone_string: guessTimezone(),
 			use_patterns: true,
 			site_intent: 'sensei',
+			launchpad_screen: 'off',
 			selected_features: selectedFeatures,
 			wpcom_public_coming_soon: 1,
 			...( selectedDesign && { is_blank_canvas: isBlankCanvasDesign( selectedDesign ) } ),
@@ -254,6 +169,11 @@ export const setSelectedStyleVariation = (
 ) => ( {
 	type: 'SET_SELECTED_STYLE_VARIATION' as const,
 	selectedStyleVariation,
+} );
+
+export const setSelectedReadymadeTemplate = ( readymadeTemplate: ReadymadeTemplate ) => ( {
+	type: 'SET_READYMADE_TEMPLATE' as const,
+	readymadeTemplate,
 } );
 
 export const setSelectedSite = ( selectedSite: number | undefined ) => ( {
@@ -407,9 +327,21 @@ export const setDomainCartItem = ( domainCartItem: MinimalRequestCartProduct | u
 	domainCartItem,
 } );
 
+export const setDomainCartItems = (
+	domainCartItems: MinimalRequestCartProduct[] | undefined
+) => ( {
+	type: 'SET_DOMAIN_CART_ITEMS' as const,
+	domainCartItems,
+} );
+
 export const setDomainsTransferData = ( bulkDomainsData: DomainTransferData | undefined ) => ( {
 	type: 'SET_DOMAINS_TRANSFER_DATA' as const,
 	bulkDomainsData,
+} );
+
+export const setSignupDomainOrigin = ( signupDomainOrigin: string | undefined ) => ( {
+	type: 'SET_SIGNUP_DOMAIN_ORIGIN' as const,
+	signupDomainOrigin,
 } );
 
 export const setShouldImportDomainTransferDnsRecords = (
@@ -453,6 +385,7 @@ export const setPartnerBundle = ( partnerBundle: string | null ) => ( {
 	type: 'SET_PARTNER_BUNDLE' as const,
 	partnerBundle,
 } );
+
 export type OnboardAction = ReturnType<
 	| typeof addFeature
 	| typeof removeFeature
@@ -478,6 +411,7 @@ export type OnboardAction = ReturnType<
 	| typeof setSelectedDesign
 	| typeof setSelectedStyleVariation
 	| typeof setSelectedSite
+	| typeof setSelectedReadymadeTemplate
 	| typeof setShowSignupDialog
 	| typeof setSiteTitle
 	| typeof startOnboarding
@@ -495,8 +429,10 @@ export type OnboardAction = ReturnType<
 	| typeof resetSelectedDesign
 	| typeof setDomainForm
 	| typeof setDomainCartItem
+	| typeof setDomainCartItems
 	| typeof setSiteDescription
 	| typeof setSiteLogo
+	| typeof setSiteUrl
 	| typeof setSiteAccentColor
 	| typeof setVerticalId
 	| typeof setStoreLocationCountryCode
@@ -510,4 +446,5 @@ export type OnboardAction = ReturnType<
 	| typeof setIsMigrateFromWp
 	| typeof setPaidSubscribers
 	| typeof setPartnerBundle
+	| typeof setSignupDomainOrigin
 >;

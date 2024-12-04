@@ -1,4 +1,5 @@
 export const STATS_PERIOD = {
+	HOUR: 'hour',
 	DAY: 'day',
 	WEEK: 'week',
 	MONTH: 'month',
@@ -26,7 +27,10 @@ export const STAT_TYPE_COMMENT_FOLLOWERS = 'statsCommentFollowers';
 export const STAT_TYPE_COMMENTS = 'statsComments';
 export const STAT_TYPE_COUNTRY_VIEWS = 'statsCountryViews';
 export const STAT_TYPE_FOLLOWERS = 'statsFollowers';
-export const STAT_TYPE_INSIGHTS = 'statsInsights';
+export const STAT_TYPE_INSIGHTS_ALL_TIME_STATS = 'statsInsightsAllTimeStats';
+export const STAT_TYPE_INSIGHTS_MOST_POPULAR_TIME = 'statsInsightsMostPopularTime';
+export const STAT_TYPE_INSIGHTS_MOST_POPULAR_DAY = 'statsInsightsMostPopularDay';
+export const STAT_TYPE_INSIGHTS_ALL_TIME_INSIGHTS = 'statsInsightsAllTimeInsights';
 export const STAT_TYPE_PUBLICIZE = 'statsPublicize';
 export const STAT_TYPE_REFERRERS = 'statsReferrers';
 export const STAT_TYPE_SEARCH_TERMS = 'statsSearchTerms';
@@ -34,6 +38,7 @@ export const STAT_TYPE_STREAK = 'statsStreak';
 export const STAT_TYPE_SUMMARY = 'statsSummary';
 export const STAT_TYPE_TAGS = 'statsTags';
 export const STAT_TYPE_TOP_AUTHORS = 'statsTopAuthors';
+export const STAT_TYPE_EMAILS_SUMMARY = 'statsEmailsSummary';
 export const STAT_TYPE_TOP_POSTS = 'statsTopPosts';
 export const STAT_TYPE_VIDEO_PLAYS = 'statsVideoPlays';
 export const STAT_TYPE_VISITS = 'statsVisits';
@@ -48,12 +53,16 @@ export const STATS_FEATURE_DATE_CONTROL_LAST_7_DAYS = 'StatsDateControl/last_7_d
 export const STATS_FEATURE_DATE_CONTROL_LAST_30_DAYS = 'StatsDateControl/last_30_days';
 export const STATS_FEATURE_DATE_CONTROL_LAST_90_DAYS = 'StatsDateControl/last_3_months';
 export const STATS_FEATURE_DATE_CONTROL_LAST_YEAR = 'StatsDateControl/last_year';
+export const STATS_FEATURE_DATE_CONTROL_CUSTOM_DATE_RANGE = 'StatsDateControl/custom_date_range';
 export const STATS_FEATURE_INTERVAL_DROPDOWN = 'StatsIntervalDropdown';
+export const STATS_FEATURE_INTERVAL_DROPDOWN_HOUR = `StatsIntervalDropdown/${ STATS_PERIOD.HOUR }`;
 export const STATS_FEATURE_INTERVAL_DROPDOWN_DAY = `StatsIntervalDropdown/${ STATS_PERIOD.DAY }`;
 export const STATS_FEATURE_INTERVAL_DROPDOWN_WEEK = `StatsIntervalDropdown/${ STATS_PERIOD.WEEK }`;
 export const STATS_FEATURE_INTERVAL_DROPDOWN_MONTH = `StatsIntervalDropdown/${ STATS_PERIOD.MONTH }`;
 export const STATS_FEATURE_INTERVAL_DROPDOWN_YEAR = `StatsIntervalDropdown/${ STATS_PERIOD.YEAR }`;
 export const STATS_FEATURE_DOWNLOAD_CSV = 'StatsDownloadCsv';
+export const STATS_FEATURE_PAGE_TRAFFIC = 'StatsPageTraffic';
+export const STATS_FEATURE_PAGE_INSIGHTS = 'StatsPageInsights';
 export const STATS_FEATURE_SUMMARY_LINKS = 'StatsModuleSummaryLinks';
 export const STATS_FEATURE_SUMMARY_LINKS_DAY = 'StatsModuleSummaryLinks/day';
 export const STATS_FEATURE_SUMMARY_LINKS_7_DAYS = 'StatsModuleSummaryLinks/7_days';
@@ -66,3 +75,5 @@ export const STATS_FEATURE_UTM_STATS = 'stats_utm';
 
 // other
 export const STATS_DO_YOU_LOVE_JETPACK_STATS_NOTICE = 'DoYouLoveJetpackStatsNotice';
+
+export const DATE_FORMAT = 'YYYY-MM-DD';

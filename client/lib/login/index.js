@@ -1,10 +1,13 @@
 import config from '@automattic/calypso-config';
 import { addLocaleToPath, isDefaultLocale } from '@automattic/i18n-utils';
 import cookie from 'cookie';
+import { getLocaleSlug } from 'i18n-calypso';
 import { get, includes, startsWith } from 'lodash';
 import {
 	isAkismetOAuth2Client,
 	isCrowdsignalOAuth2Client,
+	isGravatarFlowOAuth2Client,
+	isGravatarOAuth2Client,
 	isGravPoweredOAuth2Client,
 	isJetpackCloudOAuth2Client,
 	isA4AOAuth2Client,
@@ -13,6 +16,10 @@ import {
 	isStudioAppOAuth2Client,
 } from 'calypso/lib/oauth2-clients';
 import { login } from 'calypso/lib/paths';
+
+function getCookies() {
+	return typeof document === 'undefined' ? {} : cookie.parse( document.cookie );
+}
 
 export function getSocialServiceFromClientId( clientId ) {
 	if ( ! clientId ) {
@@ -72,6 +79,18 @@ export function getSignupUrl( currentQuery, currentRoute, oauth2Client, locale, 
 			includes( get( currentQuery, 'redirect_to' ), '/jetpack/connect/authorize' ) &&
 			includes( get( currentQuery, 'redirect_to' ), '_wp_nonce' )
 		) {
+			// If the current query has plugin_name param, but redirect_to doesn't, add it to the redirect_to
+			const pluginName = get( currentQuery, 'plugin_name' );
+			try {
+				const urlObj = new URL( currentQuery.redirect_to );
+				if ( ! urlObj.searchParams.has( 'plugin_name' ) && pluginName ) {
+					urlObj.searchParams.set( 'plugin_name', pluginName );
+					return urlObj.toString();
+				}
+			} catch ( e ) {
+				return '/jetpack/connect';
+			}
+
 			/**
 			 * `log-in/jetpack/:locale` is reached as part of the Jetpack connection flow. In
 			 * this case, the redirect_to will handle signups as part of the flow. Use the
@@ -93,8 +112,22 @@ export function getSignupUrl( currentQuery, currentRoute, oauth2Client, locale, 
 		return `${ signupUrl }/${ oauth2Flow }?${ oauth2Params.toString() }`;
 	}
 
-	if ( isGravPoweredOAuth2Client( oauth2Client ) || isStudioAppOAuth2Client( oauth2Client ) ) {
-		// Studio app and Gravatar powered clients signup via the magic login page
+	if ( isGravPoweredOAuth2Client( oauth2Client ) ) {
+		const gravatarFrom = get( currentQuery, 'gravatar_from', 'signup' );
+
+		// Gravatar powered clients signup via the magic login page
+		return login( {
+			locale,
+			twoFactorAuthType: 'link',
+			oauth2ClientId: oauth2Client.id,
+			redirectTo: redirectTo,
+			gravatarFrom: isGravatarOAuth2Client( oauth2Client ) && gravatarFrom,
+			gravatarFlow: isGravatarFlowOAuth2Client( oauth2Client ),
+		} );
+	}
+
+	if ( isStudioAppOAuth2Client( oauth2Client ) ) {
+		// Studio app signup via the magic login page
 		return login( {
 			locale,
 			twoFactorAuthType: 'link',
@@ -161,7 +194,7 @@ export function getSignupUrl( currentQuery, currentRoute, oauth2Client, locale, 
 }
 
 export const isReactLostPasswordScreenEnabled = () => {
-	const cookies = typeof document === 'undefined' ? {} : cookie.parse( document.cookie );
+	const cookies = getCookies();
 	return (
 		config.isEnabled( 'login/react-lost-password-screen' ) ||
 		cookies.enable_react_password_screen === 'yes'
@@ -214,4 +247,34 @@ export const getLoginLinkPageUrl = ( {
 	}
 
 	return login( loginParameters );
+};
+
+export const getPluginTitle = ( pluginName, translate, langSlug = getLocaleSlug() ) => {
+	const allowedPluginNames = {
+		'jetpack-ai': translate( 'Jetpack' ),
+		'woocommerce-payments': translate( 'WooPayments' ),
+		'order-attribution': translate( 'Order Attribution' ),
+	};
+
+	const listFormatter = new Intl.ListFormat( langSlug, {
+		style: 'long',
+		type: 'conjunction',
+	} );
+
+	const defaultTitle = listFormatter.format( Object.values( allowedPluginNames ) );
+
+	if ( ! pluginName ) {
+		// Handle null, undefined, or empty strings
+		return defaultTitle;
+	}
+
+	// Handle multiple plugin names separated by commas
+	const titles = pluginName.split( ',' ).map( ( name ) => allowedPluginNames[ name.trim() ] );
+	const uniqueTitles = Array.from( new Set( titles ) ).filter( ( title ) => title );
+
+	if ( uniqueTitles.length === 0 ) {
+		return defaultTitle;
+	}
+
+	return listFormatter.format( uniqueTitles );
 };

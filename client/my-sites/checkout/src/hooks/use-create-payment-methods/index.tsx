@@ -5,8 +5,6 @@ import {
 	createGooglePayMethod,
 	createBancontactMethod,
 	createBancontactPaymentMethodStore,
-	createGiropayMethod,
-	createGiropayPaymentMethodStore,
 	createP24Method,
 	createP24PaymentMethodStore,
 	createEpsMethod,
@@ -36,6 +34,7 @@ import {
 	createNetBankingMethod,
 } from '../../payment-methods/netbanking';
 import { createPayPalMethod, createPayPalStore } from '../../payment-methods/paypal';
+import { createPayPal } from '../../payment-methods/paypal-js';
 import { createPixPaymentMethod } from '../../payment-methods/pix';
 import { createWeChatMethod, createWeChatPaymentMethodStore } from '../../payment-methods/wechat';
 import useCreateExistingCards from './use-create-existing-cards';
@@ -51,13 +50,13 @@ const debug = debugFactory( 'calypso:use-create-payment-methods' );
 
 export { useCreateExistingCards };
 
-export function useCreatePayPal( {
+export function useCreatePayPalExpress( {
 	labelText,
 	shouldShowTaxFields,
 }: {
 	labelText?: string | null;
 	shouldShowTaxFields?: boolean;
-} ): PaymentMethod {
+} ): PaymentMethod | null {
 	const store = useMemo( () => createPayPalStore(), [] );
 	const paypalMethod = useMemo(
 		() => createPayPalMethod( { labelText, store, shouldShowTaxFields } ),
@@ -66,7 +65,13 @@ export function useCreatePayPal( {
 	return paypalMethod;
 }
 
+export function useCreatePayPalPPCP(): PaymentMethod | null {
+	const shouldUsePayPalPPCP = isEnabled( 'checkout/paypal-ppcp' );
+	return useMemo( () => ( shouldUsePayPalPPCP ? createPayPal() : null ), [ shouldUsePayPalPPCP ] );
+}
+
 export function useCreateCreditCard( {
+	currency,
 	isStripeLoading,
 	stripeLoadingError,
 	shouldUseEbanx,
@@ -76,6 +81,7 @@ export function useCreateCreditCard( {
 	allowUseForAllSubscriptions,
 	hasExistingCardMethods,
 }: {
+	currency: string | null;
 	isStripeLoading: boolean;
 	stripeLoadingError: StripeLoadingError;
 	shouldUseEbanx: boolean;
@@ -98,6 +104,7 @@ export function useCreateCreditCard( {
 		() =>
 			shouldLoadStripeMethod
 				? createCreditCardMethod( {
+						currency,
 						store: stripePaymentMethodStore,
 						shouldUseEbanx,
 						shouldShowTaxFields,
@@ -107,6 +114,7 @@ export function useCreateCreditCard( {
 				  } )
 				: null,
 		[
+			currency,
 			shouldLoadStripeMethod,
 			stripePaymentMethodStore,
 			shouldUseEbanx,
@@ -187,27 +195,6 @@ function useCreateBancontact( {
 		() =>
 			shouldLoad
 				? createBancontactMethod( {
-						store: paymentMethodStore,
-						submitButtonContent: <CheckoutSubmitButtonContent />,
-				  } )
-				: null,
-		[ shouldLoad, paymentMethodStore ]
-	);
-}
-
-function useCreateGiropay( {
-	isStripeLoading,
-	stripeLoadingError,
-}: {
-	isStripeLoading: boolean;
-	stripeLoadingError: StripeLoadingError;
-} ): PaymentMethod | null {
-	const shouldLoad = ! isStripeLoading && ! stripeLoadingError;
-	const paymentMethodStore = useMemo( () => createGiropayPaymentMethodStore(), [] );
-	return useMemo(
-		() =>
-			shouldLoad
-				? createGiropayMethod( {
 						store: paymentMethodStore,
 						submitButtonContent: <CheckoutSubmitButtonContent />,
 				  } )
@@ -399,6 +386,19 @@ function useCreateRazorpay( {
 	}, [ razorpayConfiguration, isRazorpayReady, cartKey ] );
 }
 
+/**
+ * Create all possible payment methods.
+ *
+ * Note that this does not check the available/allowed payment methods list
+ * (with one exception for Ebanx since it shares a payment method with Stripe
+ * credit cards and we need to know which one to create).
+ *
+ * That check is done using `filterAppropriatePaymentMethods()` elsewhere since
+ * it may change while checkout is already loaded and many payment methods
+ * cannot easily be created more than once. The only reason this function
+ * should not create a payment method is if it's not possible (eg: if a
+ * dependent JS library is not loaded or if Apple Pay is not available).
+ */
 export default function useCreatePaymentMethods( {
 	contactDetailsType,
 	isStripeLoading,
@@ -422,8 +422,9 @@ export default function useCreatePaymentMethods( {
 } ): PaymentMethod[] {
 	const cartKey = useCartKey();
 	const { responseCart } = useShoppingCart( cartKey );
-
-	const paypalMethod = useCreatePayPal( {} );
+	const { currency } = responseCart;
+	const paypalExpressMethod = useCreatePayPalExpress( {} );
+	const paypalPPCPMethod = useCreatePayPalPPCP();
 
 	const idealMethod = useCreateIdeal( {
 		isStripeLoading,
@@ -443,11 +444,6 @@ export default function useCreatePaymentMethods( {
 	} );
 
 	const bancontactMethod = useCreateBancontact( {
-		isStripeLoading,
-		stripeLoadingError,
-	} );
-
-	const giropayMethod = useCreateGiropay( {
 		isStripeLoading,
 		stripeLoadingError,
 	} );
@@ -487,6 +483,7 @@ export default function useCreatePaymentMethods( {
 	// in the credit card form instead.
 	const shouldShowTaxFields = contactDetailsType === 'none';
 	const stripeMethod = useCreateCreditCard( {
+		currency,
 		shouldShowTaxFields,
 		isStripeLoading,
 		stripeLoadingError,
@@ -528,9 +525,9 @@ export default function useCreatePaymentMethods( {
 		applePayMethod,
 		googlePayMethod,
 		freePaymentMethod,
-		paypalMethod,
+		paypalExpressMethod,
+		paypalPPCPMethod,
 		idealMethod,
-		giropayMethod,
 		sofortMethod,
 		netbankingMethod,
 		pixMethod,

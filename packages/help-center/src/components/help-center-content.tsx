@@ -3,26 +3,30 @@
  * External Dependencies
  */
 import { recordTracksEvent } from '@automattic/calypso-analytics';
-import OdieAssistantProvider, { useSetOdieStorage } from '@automattic/odie-client';
+import { useManageSupportInteraction } from '@automattic/odie-client/src/data';
+import { useGetSupportInteractions } from '@automattic/odie-client/src/data/use-get-support-interactions';
 import { CardBody, Disabled } from '@wordpress/components';
-import { useSelect } from '@wordpress/data';
+import { useSelect, useDispatch } from '@wordpress/data';
 import { useEffect, useRef } from '@wordpress/element';
-import React, { useCallback, useState } from 'react';
-import { useSelector } from 'react-redux';
+import React from 'react';
 import { Route, Routes, useLocation, useNavigate } from 'react-router-dom';
-import { getSectionName, getSelectedSiteId } from 'calypso/state/ui/selectors';
+import { v4 as uuidv4 } from 'uuid';
 /**
  * Internal Dependencies
  */
-import { useShouldUseWapuu } from '../hooks';
+import { useHelpCenterContext } from '../contexts/HelpCenterContext';
+import { useSupportStatus } from '../data/use-support-status';
 import { HELP_CENTER_STORE } from '../stores';
+import { HelpCenterArticle } from './help-center-article';
+import { HelpCenterChat } from './help-center-chat';
+import { HelpCenterChatHistory } from './help-center-chat-history';
 import { HelpCenterContactForm } from './help-center-contact-form';
 import { HelpCenterContactPage } from './help-center-contact-page';
-import { HelpCenterEmbedResult } from './help-center-embed-result';
-import { HelpCenterOdie } from './help-center-odie';
 import { HelpCenterSearch } from './help-center-search';
 import { SuccessScreen } from './ticket-success-screen';
 import type { HelpCenterSelect } from '@automattic/data-stores';
+
+import './help-center-content.scss';
 
 // Disabled component only applies the class if isDisabled is true, we want it always.
 function Wrapper( {
@@ -43,100 +47,87 @@ function Wrapper( {
 const HelpCenterContent: React.FC< { isRelative?: boolean; currentRoute?: string } > = ( {
 	currentRoute,
 } ) => {
-	const [ searchTerm, setSearchTerm ] = useState( '' );
 	const location = useLocation();
-	const navigate = useNavigate();
 	const containerRef = useRef< HTMLDivElement >( null );
-	const section = useSelector( getSectionName );
-	const shouldUseWapuu = useShouldUseWapuu();
-	const { isMinimized } = useSelect( ( select ) => {
-		const store = select( HELP_CENTER_STORE ) as HelpCenterSelect;
-		return {
-			isMinimized: store.getIsMinimized(),
-		};
-	}, [] );
-	const selectedSiteId = useSelector( getSelectedSiteId );
+	const navigate = useNavigate();
+	const { setNavigateToRoute } = useDispatch( HELP_CENTER_STORE );
+	const { setCurrentSupportInteraction } = useDispatch( HELP_CENTER_STORE );
+	const { sectionName } = useHelpCenterContext();
+	const { startNewInteraction } = useManageSupportInteraction();
+	const { data } = useSupportStatus();
+	const { data: openSupportInteraction, isLoading: isLoadingOpenSupportInteractions } =
+		useGetSupportInteractions( 'help-center' );
+	const isUserEligibleForPaidSupport = data?.eligibility.is_user_eligible ?? false;
 
 	useEffect( () => {
 		recordTracksEvent( 'calypso_helpcenter_page_open', {
 			pathname: location.pathname,
 			search: location.search,
-			section,
+			section: sectionName,
 			force_site_id: true,
 			location: 'help-center',
+			is_free_user: ! isUserEligibleForPaidSupport,
 		} );
-	}, [ location, section ] );
+	}, [ location, sectionName, isUserEligibleForPaidSupport ] );
 
-	const { initialRoute } = useSelect(
-		( select ) => ( {
-			initialRoute: ( select( HELP_CENTER_STORE ) as HelpCenterSelect ).getInitialRoute(),
-		} ),
-		[]
-	);
+	const { currentSupportInteraction, navigateToRoute, isMinimized } = useSelect( ( select ) => {
+		const store = select( HELP_CENTER_STORE ) as HelpCenterSelect;
+		return {
+			currentSupportInteraction: store.getCurrentSupportInteraction(),
+			navigateToRoute: store.getNavigateToRoute(),
+			isMinimized: store.getIsMinimized(),
+		};
+	}, [] );
 
 	useEffect( () => {
-		if ( initialRoute ) {
-			navigate( initialRoute );
+		if (
+			! isLoadingOpenSupportInteractions &&
+			openSupportInteraction === null &&
+			! currentSupportInteraction
+		) {
+			startNewInteraction( {
+				event_source: 'help-center',
+				event_external_id: uuidv4(),
+			} );
+		} else if ( openSupportInteraction ) {
+			setCurrentSupportInteraction( openSupportInteraction[ 0 ] );
 		}
-	}, [ initialRoute ] );
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [ openSupportInteraction, isLoadingOpenSupportInteractions ] );
 
-	// reset the scroll location on navigation, TODO: unless there's an anchor
 	useEffect( () => {
-		setSearchTerm( '' );
-		if ( containerRef.current ) {
+		if ( navigateToRoute ) {
+			const fullLocation = [ location.pathname, location.search, location.hash ].join( '' );
+			// On navigate once to keep the back button responsive.
+			if ( fullLocation !== navigateToRoute ) {
+				navigate( navigateToRoute );
+			}
+			setNavigateToRoute( null );
+		}
+	}, [ navigate, navigateToRoute, setNavigateToRoute, location ] );
+
+	useEffect( () => {
+		if ( containerRef.current && ! location.hash && ! location.pathname.includes( '/odie' ) ) {
 			containerRef.current.scrollTo( 0, 0 );
 		}
 	}, [ location ] );
-
-	const trackEvent = useCallback(
-		( eventName: string, properties: Record< string, unknown > = {} ) => {
-			recordTracksEvent( eventName, properties );
-		},
-		[]
-	);
-
-	const setOdieStorage = useSetOdieStorage( 'chat_id' );
 
 	return (
 		<CardBody ref={ containerRef } className="help-center__container-content">
 			<Wrapper isDisabled={ isMinimized } className="help-center__container-content-wrapper">
 				<Routes>
-					<Route
-						path="/"
-						element={
-							<HelpCenterSearch onSearchChange={ setSearchTerm } currentRoute={ currentRoute } />
-						}
-					/>
-					<Route path="/post" element={ <HelpCenterEmbedResult /> } />
+					<Route path="/" element={ <HelpCenterSearch currentRoute={ currentRoute } /> } />
+					<Route path="/post" element={ <HelpCenterArticle /> } />
 					<Route path="/contact-options" element={ <HelpCenterContactPage /> } />
-					<Route
-						path="/contact-form"
-						element={ <HelpCenterContactForm onSubmit={ () => setOdieStorage( null ) } /> }
-					/>
+					<Route path="/contact-form" element={ <HelpCenterContactForm /> } />
 					<Route path="/success" element={ <SuccessScreen /> } />
 					<Route
 						path="/odie"
 						element={
-							<OdieAssistantProvider
-								botNameSlug="wpcom-support-chat"
-								botName="Wapuu"
-								enabled={ shouldUseWapuu }
-								isMinimized={ isMinimized }
-								initialUserMessage={ searchTerm }
-								logger={ trackEvent }
-								loggerEventNamePrefix="calypso_odie"
-								selectedSiteId={ selectedSiteId }
-								extraContactOptions={
-									<HelpCenterContactPage
-										hideHeaders
-										trackEventName="calypso_odie_extra_contact_option"
-									/>
-								}
-							>
-								<HelpCenterOdie />
-							</OdieAssistantProvider>
+							<HelpCenterChat isUserEligibleForPaidSupport={ isUserEligibleForPaidSupport } />
 						}
 					/>
+					<Route path="/chat-history" element={ <HelpCenterChatHistory /> } />
 				</Routes>
 			</Wrapper>
 		</CardBody>

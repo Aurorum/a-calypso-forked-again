@@ -1,11 +1,13 @@
 import { FEATURE_STATS_PAID } from '@automattic/calypso-products';
 import { useState, useEffect } from 'react';
+import QuerySiteStats from 'calypso/components/data/query-site-stats';
 import {
 	DEFAULT_NOTICES_VISIBILITY,
 	Notices,
 	useNoticesVisibilityQuery,
 	processConflictNotices,
 } from 'calypso/my-sites/stats/hooks/use-notice-visibility-query';
+import usePlanUsageQuery from 'calypso/my-sites/stats/hooks/use-plan-usage-query';
 import { useSelector, useDispatch } from 'calypso/state';
 import { resetSiteState } from 'calypso/state/purchases/actions';
 import { hasLoadedSitePurchasesFromServer } from 'calypso/state/purchases/selectors';
@@ -20,13 +22,17 @@ import hasSiteProductJetpackStatsFree from 'calypso/state/sites/selectors/has-si
 import hasSiteProductJetpackStatsPaid from 'calypso/state/sites/selectors/has-site-product-jetpack-stats-paid';
 import hasSiteProductJetpackStatsPWYWOnly from 'calypso/state/sites/selectors/has-site-product-jetpack-stats-pwyw-only';
 import isJetpackSite from 'calypso/state/sites/selectors/is-jetpack-site';
+import { getSiteStatsNormalizedData } from 'calypso/state/stats/lists/selectors';
 import getSelectedSite from 'calypso/state/ui/selectors/get-selected-site';
-import useStatsPurchases from '../hooks/use-stats-purchases';
+import useStatsPurchases, { shouldShowPaywallNotice } from '../hooks/use-stats-purchases';
+import { AllTimeData } from '../sections/all-time-highlights-section';
 import ALL_STATS_NOTICES from './all-notice-definitions';
+import JITMWrapper from './jitm-wrapper';
 import { StatsNoticeProps, StatsNoticesProps } from './types';
 import './style.scss';
 
 const TEAM51_OWNER_ID = 70055110;
+const SIGNIFICANT_VIEWS_AMOUNT = 100;
 
 const ensureOnlyOneNoticeVisible = (
 	serverNoticesVisibility: Notices,
@@ -75,26 +81,50 @@ const NewStatsNotices = ( { siteId, isOdysseyStats, statsPurchaseSuccess }: Stat
 	const isSiteJetpackNotAtomic = useSelector(
 		( state ) => !! isJetpackSite( state, siteId, { treatAtomicAsJetpackSite: false } )
 	);
+	const isSiteJetpack = useSelector(
+		( state ) => !! isJetpackSite( state, siteId, { treatAtomicAsJetpackSite: true } )
+	);
 	const isWpcom = useSelector( ( state ) => !! isSiteWpcom( state, siteId ) );
 	const isP2 = useSelector( ( state ) => !! isSiteWPForTeams( state as object, siteId as number ) );
 	const isOwnedByTeam51 = useSelector(
 		( state ) => getSelectedSite( state )?.site_owner === TEAM51_OWNER_ID
 	);
 
-	const wpcomSiteHasPaidStatsFeature = useSelector(
-		( state ) => isWpcom && siteHasFeature( state, siteId, FEATURE_STATS_PAID )
+	const siteHasPaidStatsFeature = useSelector( ( state ) =>
+		siteHasFeature( state, siteId, FEATURE_STATS_PAID )
 	);
 
 	const hasPaidStats =
 		useSelector( ( state ) => hasSiteProductJetpackStatsPaid( state, siteId ) ) ||
-		wpcomSiteHasPaidStatsFeature;
+		siteHasPaidStatsFeature;
 	const hasFreeStats = useSelector( ( state ) => hasSiteProductJetpackStatsFree( state, siteId ) );
 
-	const { isRequestingSitePurchases, isCommercialOwned } = useStatsPurchases( siteId );
+	const { isRequestingSitePurchases, isCommercialOwned, supportCommercialUse } =
+		useStatsPurchases( siteId );
 
 	const hasPWYWPlanOnly = useSelector( ( state ) =>
 		hasSiteProductJetpackStatsPWYWOnly( state, siteId )
 	);
+
+	// Show the paywall notice if the site has reached the monthly views limit
+	// and no commercial purchase.
+	const showPaywallNotice =
+		useSelector( ( state ) => {
+			return shouldShowPaywallNotice( state, siteId );
+		} ) &&
+		! supportCommercialUse &&
+		isSiteJetpackNotAtomic;
+
+	const { views } = useSelector(
+		( state ) => getSiteStatsNormalizedData( state, siteId, 'stats', {} ) || {}
+	) as AllTimeData;
+	const hasSignificantViews = !! ( views && views >= SIGNIFICANT_VIEWS_AMOUNT );
+
+	const { data } = usePlanUsageQuery( siteId );
+	const currentUsage = data?.current_usage?.views_count || 0;
+	const tierLimit = data?.views_limit || null;
+	const isNearLimit = tierLimit ? currentUsage / tierLimit >= 0.9 : false;
+	const isOverLimit = tierLimit ? currentUsage / tierLimit >= 1 : false;
 
 	const noticeOptions = {
 		siteId,
@@ -106,10 +136,15 @@ const NewStatsNotices = ( { siteId, isOdysseyStats, statsPurchaseSuccess }: Stat
 		hasPaidStats,
 		hasFreeStats,
 		isSiteJetpackNotAtomic,
+		isSiteJetpack,
 		statsPurchaseSuccess,
 		isCommercial,
 		isCommercialOwned,
 		hasPWYWPlanOnly,
+		hasSignificantViews,
+		showPaywallNotice,
+		isNearLimit,
+		isOverLimit,
 	};
 
 	const { isLoading, isError, data: serverNoticesVisibility } = useNoticesVisibilityQuery( siteId );
@@ -135,14 +170,20 @@ const NewStatsNotices = ( { siteId, isOdysseyStats, statsPurchaseSuccess }: Stat
 		noticeOptions
 	);
 
+	const allNotices = ALL_STATS_NOTICES.map(
+		( notice ) =>
+			calculatedNoticesVisibility[ notice.noticeId ] && (
+				<notice.component key={ notice.noticeId } { ...noticeOptions } />
+			)
+	).filter( Boolean );
+
 	// TODO: The dismiss logic could potentially be extracted too.
 	return (
 		<>
-			{ ALL_STATS_NOTICES.map(
-				( notice ) =>
-					calculatedNoticesVisibility[ notice.noticeId ] && (
-						<notice.component key={ notice.noticeId } { ...noticeOptions } />
-					)
+			{ allNotices }
+			{ /** JITM Container */ }
+			{ isSiteJetpack && allNotices.length === 0 && (
+				<JITMWrapper isOdysseyStats={ isOdysseyStats } siteId={ siteId } />
 			) }
 		</>
 	);
@@ -150,6 +191,7 @@ const NewStatsNotices = ( { siteId, isOdysseyStats, statsPurchaseSuccess }: Stat
 
 /**
  * Return new or old StatsNotices components based on env.
+ * JITM is rendered in the component as well.
  */
 export default function StatsNotices( {
 	siteId,
@@ -165,10 +207,13 @@ export default function StatsNotices( {
 	}
 
 	return (
-		<NewStatsNotices
-			siteId={ siteId }
-			isOdysseyStats={ isOdysseyStats }
-			statsPurchaseSuccess={ statsPurchaseSuccess }
-		/>
+		<>
+			{ siteId && <QuerySiteStats siteId={ siteId } statType="stats" query={ {} } /> }
+			<NewStatsNotices
+				siteId={ siteId }
+				isOdysseyStats={ isOdysseyStats }
+				statsPurchaseSuccess={ statsPurchaseSuccess }
+			/>
+		</>
 	);
 }

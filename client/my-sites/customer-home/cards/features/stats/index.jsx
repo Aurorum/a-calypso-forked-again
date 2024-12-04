@@ -16,7 +16,7 @@ import isUnlaunchedSite from 'calypso/state/selectors/is-unlaunched-site';
 import {
 	getSiteAdminUrl,
 	getSiteOption,
-	isGlobalSiteViewEnabled as getIsGlobalSiteViewEnabled,
+	isAdminInterfaceWPAdmin,
 } from 'calypso/state/sites/selectors';
 import { requestChartCounts } from 'calypso/state/stats/chart-tabs/actions';
 import { getCountRecords, getLoadingTabs } from 'calypso/state/stats/chart-tabs/selectors';
@@ -39,7 +39,7 @@ export const StatsV2 = ( {
 	insightsQuery,
 	isLoading,
 	isSiteUnlaunched,
-	isGlobalSiteViewEnabled,
+	adminInterfaceIsWPAdmin,
 	mostPopularDay,
 	mostPopularTime,
 	siteCreatedAt,
@@ -171,7 +171,7 @@ export const StatsV2 = ( {
 						<div className="stats__all">
 							<a
 								href={
-									isGlobalSiteViewEnabled
+									adminInterfaceIsWPAdmin
 										? `${ siteAdminUrl }admin.php?page=stats`
 										: `/stats/day/${ siteSlug }`
 								}
@@ -232,7 +232,13 @@ const getStatsQueries = createSelector(
 
 const getStatsData = createSelector(
 	( state, siteId, chartQuery, insightsQuery, topPostsQuery ) => {
-		const counts = getCountRecords( state, siteId, chartQuery.period );
+		const counts = getCountRecords(
+			state,
+			siteId,
+			chartQuery.date,
+			chartQuery.period,
+			chartQuery.quantity
+		);
 		const chartData = buildChartData(
 			[],
 			chartQuery.chartTab,
@@ -268,14 +274,16 @@ const getStatsData = createSelector(
 		};
 	},
 	( state, siteId, chartQuery, insightsQuery, topPostsQuery ) => [
-		getCountRecords( state, siteId, chartQuery.period ),
+		getCountRecords( state, siteId, chartQuery.date, chartQuery.period, chartQuery.quantity ),
 		insightsQuery,
 		topPostsQuery,
 	]
 );
 
 const isLoadingStats = ( state, siteId, chartQuery, insightsQuery, topPostsQuery ) =>
-	getLoadingTabs( state, siteId, chartQuery.period ).includes( chartQuery.chartTab ) ||
+	getLoadingTabs( state, siteId, chartQuery.date, chartQuery.period, chartQuery.quantity ).includes(
+		chartQuery.chartTab
+	) ||
 	isRequestingSiteStatsForQuery( state, siteId, 'statsInsights', insightsQuery ) ||
 	isRequestingSiteStatsForQuery( state, siteId, 'statsTopPosts', topPostsQuery );
 
@@ -284,7 +292,7 @@ const mapStateToProps = ( state ) => {
 	const siteSlug = getSelectedSiteSlug( state );
 	const siteAdminUrl = getSiteAdminUrl( state, siteId );
 	const isSiteUnlaunched = isUnlaunchedSite( state, siteId );
-	const isGlobalSiteViewEnabled = getIsGlobalSiteViewEnabled( state, siteId );
+	const adminInterfaceIsWPAdmin = isAdminInterfaceWPAdmin( state, siteId );
 	const siteCreatedAt = getSiteOption( state, siteId, 'created_at' );
 
 	const { chartQuery, insightsQuery, topPostsQuery, visitsQuery } = getStatsQueries(
@@ -312,7 +320,7 @@ const mapStateToProps = ( state ) => {
 		insightsQuery,
 		isLoading: canShowStatsData ? statsData.chartData.length !== chartQuery.quantity : isLoading,
 		isSiteUnlaunched,
-		isGlobalSiteViewEnabled,
+		adminInterfaceIsWPAdmin,
 		siteCreatedAt,
 		siteId,
 		siteSlug,

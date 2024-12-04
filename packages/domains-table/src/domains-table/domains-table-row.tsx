@@ -1,4 +1,6 @@
+import config from '@automattic/calypso-config';
 import { FEATURE_SET_PRIMARY_CUSTOM_DOMAIN } from '@automattic/calypso-products';
+import page from '@automattic/calypso-router';
 import { PartialDomainData } from '@automattic/data-stores';
 import { CheckboxControl } from '@wordpress/components';
 import { sprintf } from '@wordpress/i18n';
@@ -15,6 +17,7 @@ import { DomainsTableExpiresRenewsOnCell } from './domains-table-expires-renews-
 import { DomainsTablePlaceholder } from './domains-table-placeholder';
 import { DomainsTableRowActions } from './domains-table-row-actions';
 import { DomainsTableSiteCell } from './domains-table-site-cell';
+import DomainsTableSslCell from './domains-table-ssl-cell';
 import { DomainsTableStatusCell } from './domains-table-status-cell';
 import { DomainsTableStatusCTA } from './domains-table-status-cta';
 import type { MouseEvent } from 'react';
@@ -43,6 +46,8 @@ export function DomainsTableRow( { domain }: DomainsTableRowProps ) {
 		isAllSitesView,
 		domainStatus,
 		pendingUpdates,
+		sslStatus,
+		hasWpcomManagedSslCert,
 	} = useDomainRow( domain );
 	const { canSelectAnyDomains, domainsTableColumns, isCompact } = useDomainsTable();
 
@@ -86,6 +91,13 @@ export function DomainsTableRow( { domain }: DomainsTableRowProps ) {
 	};
 
 	const handleSelect = () => {
+		const isAllDomainManagementEnabled = config.isEnabled( 'calypso/all-domain-management' );
+
+		if ( isAllDomainManagementEnabled && isAllSitesView ) {
+			page.show( domainManagementLink );
+			return;
+		}
+
 		window.location.href = domainManagementLink;
 	};
 
@@ -96,6 +108,7 @@ export function DomainsTableRow( { domain }: DomainsTableRowProps ) {
 			onClick={ domainManagementLink ? handleSelect : undefined }
 		>
 			{ canSelectAnyDomains && (
+				// eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions
 				<td
 					className="domains-table-checkbox-td"
 					onClick={ ( e: MouseEvent ) => e.stopPropagation() }
@@ -196,8 +209,20 @@ export function DomainsTableRow( { domain }: DomainsTableRowProps ) {
 					);
 				}
 
+				if ( column.name === 'ssl' ) {
+					return (
+						<DomainsTableSslCell
+							key={ domain.domain + column.name }
+							domainManagementLink={ domainManagementLink }
+							sslStatus={ sslStatus }
+							hasWpcomManagedSslCert={ hasWpcomManagedSslCert }
+						/>
+					);
+				}
+
 				if ( column.name === 'action' ) {
 					return (
+						// eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions
 						<td
 							key={ domain.domain + column.name }
 							className="domains-table-row__actions"

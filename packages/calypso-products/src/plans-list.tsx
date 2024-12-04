@@ -7,8 +7,6 @@ import {
 	FEATURE_1GB_STORAGE,
 	FEATURE_50GB_STORAGE,
 	FEATURE_6GB_STORAGE,
-	FEATURE_50GB_STORAGE_ADD_ON,
-	FEATURE_100GB_STORAGE_ADD_ON,
 	FEATURE_ACCEPT_PAYMENTS,
 	FEATURE_ACTIVITY_LOG,
 	FEATURE_ACTIVITY_LOG_1_YEAR_V2,
@@ -167,6 +165,9 @@ import {
 	PLAN_JETPACK_COMPLETE_MONTHLY,
 	PLAN_JETPACK_FREE,
 	PLAN_JETPACK_GOLDEN_TOKEN,
+	PLAN_JETPACK_GROWTH_MONTHLY,
+	PLAN_JETPACK_GROWTH_YEARLY,
+	PLAN_JETPACK_GROWTH_BI_YEARLY,
 	PLAN_JETPACK_PERSONAL,
 	PLAN_JETPACK_PERSONAL_MONTHLY,
 	PLAN_JETPACK_PREMIUM,
@@ -215,6 +216,7 @@ import {
 	TYPE_SECURITY_REALTIME,
 	TYPE_SECURITY_T1,
 	TYPE_SECURITY_T2,
+	TYPE_JETPACK_GROWTH,
 	TYPE_JETPACK_STARTER,
 	TYPE_FLEXIBLE,
 	TYPE_100_YEAR,
@@ -255,6 +257,9 @@ import {
 	PRODUCT_JETPACK_CRM_MONTHLY,
 	PRODUCT_JETPACK_SEARCH_MONTHLY,
 	PRODUCT_JETPACK_SOCIAL_ADVANCED_MONTHLY,
+	PRODUCT_JETPACK_SOCIAL_V1_MONTHLY,
+	PRODUCT_JETPACK_SOCIAL_V1_YEARLY,
+	PRODUCT_JETPACK_SOCIAL_V1_BI_YEARLY,
 	PRODUCT_JETPACK_BOOST_MONTHLY,
 	PRODUCT_JETPACK_VIDEOPRESS_MONTHLY,
 	FEATURE_BEAUTIFUL_THEMES,
@@ -376,7 +381,6 @@ import {
 	FEATURE_ASSEMBLED_KITS,
 	FEATURE_STOCK_NOTIFS,
 	FEATURE_DYNAMIC_UPSELLS,
-	FEATURE_LOYALTY_PROG,
 	FEATURE_CUSTOM_MARKETING_AUTOMATION,
 	FEATURE_BULK_DISCOUNTS,
 	FEATURE_INVENTORY_MGMT,
@@ -391,7 +395,6 @@ import {
 	FEATURE_PAYMENT_TRANSACTION_FEES_0_ALL,
 	FEATURE_PAYMENT_TRANSACTION_FEES_2_REGULAR,
 	FEATURE_PAYMENT_TRANSACTION_FEES_0_WOO,
-	FEATURE_GROUP_PAYMENT_TRANSACTION_FEES,
 	PRODUCT_JETPACK_STATS_MONTHLY,
 	PRODUCT_JETPACK_STATS_YEARLY,
 	TERM_CENTENNIALLY,
@@ -411,9 +414,6 @@ import {
 	FEATURE_JETPACK_1_YEAR_ARCHIVE_ACTIVITY_LOG,
 	FEATURE_COMMISSION_FEE_WOO_FEATURES,
 	FEATURE_COMMISSION_FEE_STANDARD_FEATURES,
-	PRODUCT_JETPACK_CREATOR_BI_YEARLY,
-	PRODUCT_JETPACK_CREATOR_YEARLY,
-	PRODUCT_JETPACK_CREATOR_MONTHLY,
 	FEATURE_SENSEI_SUPPORT,
 	FEATURE_SENSEI_UNLIMITED,
 	FEATURE_SENSEI_INTERACTIVE,
@@ -424,35 +424,18 @@ import {
 	FEATURE_SENSEI_JETPACK,
 	WPCOM_FEATURES_PREMIUM_THEMES_UNLIMITED,
 	FEATURE_PREMIUM_THEMES,
-	PLAN_BLUEHOST_CLOUD,
-	PLAN_BLUEHOST_CLOUD_2Y,
-	PLAN_BLUEHOST_CLOUD_MONTHLY,
-	PLAN_BLUEHOST_CLOUD_3Y,
 	WPCOM_FEATURES_PREMIUM_THEMES_LIMITED,
 	FEATURE_REAL_TIME_SECURITY_SCANS,
 	FEATURE_TIERED_STORAGE_PLANS_AVAILABLE,
 	FEATURE_SEAMLESS_STAGING_PRODUCTION_SYNCING,
 	FEATURE_SECURITY_VULNERABILITY_NOTIFICATIONS,
 	FEATURE_WOOCOMMERCE_HOSTING,
-	FEATURE_1_WEBSITE,
-	FEATURE_AD_SUPPORTED_EXPERIENCE,
-	FEATURE_LIMITED_STATS,
-	FEATURE_20_PREMIUM_THEMES,
-	FEATURE_48_PREMIUM_THEMES,
-	FEATURE_REAL_TIME_STATS,
-	FEATURE_AUTOMATED_BURST_SCALING,
-	FEATURE_DATABASE_ACCESS,
-	FEATURE_FREE_MIGRATIONS,
-	FEATURE_FULL_DATA_CENTER_REDUNDANCIES,
-	FEATURE_GITHUB_DEPLOYMENTS,
-	FEATURE_LOCAL_DEVELOPMENT_ENVIRONMENT,
-	FEATURE_PRE_INSTALLED_SECURITY_PERF_PLUGINS,
-	FEATURE_WEB_SERVER_SETTINGS,
-	FEATURE_PRE_INSTALLED_ECOMMERCE_PLUGINS,
 	FEATURE_PRIORITY_24_7_SUPPORT,
-	FEATURE_HELP_CENTER_SUPPORT,
+	FEATURE_THEMES_PREMIUM_AND_STORE,
+	FEATURE_UNLIMITED_ENTITIES,
+	JETPACK_TAG_FOR_BLOGGERS,
 } from './constants';
-import { isTrailMapVariant } from './experiments';
+import { FEATURE_CONNECT_ANALYTICS, FEATURE_JETPACK_SOCIAL_V1_MONTHLY } from './constants/features';
 import {
 	getPlanBusinessTitle,
 	getPlanEcommerceTitle,
@@ -470,7 +453,6 @@ import type {
 	IncompleteWPcomPlan,
 	IncompleteJetpackPlan,
 	Feature,
-	StorageOption,
 } from './types';
 import type { TranslateResult } from 'i18n-calypso';
 
@@ -577,53 +559,10 @@ const getPlanFreeDetails = (): IncompleteWPcomPlan => ( {
 		FEATURE_FREE_THEMES_SIGNUP,
 	],
 	get2023PricingGridSignupWpcomFeatures: () => {
-		if ( isTrailMapVariant() ) {
-			return [
-				FEATURE_WP_SUBDOMAIN_SIGNUP,
-				FEATURE_USERS,
-				FEATURE_FREE_WORDPRESS_THEMES,
-				FEATURE_LIMITED_STATS,
-				FEATURE_AD_SUPPORTED_EXPERIENCE,
-				FEATURE_1_WEBSITE,
-				FEATURE_UNLIMITED_TRAFFIC,
-				FEATURE_BANDWIDTH,
-				FEATURE_FREE_SSL_CERTIFICATE,
-				FEATURE_CDN,
-				FEATURE_POST_EDITS_HISTORY,
-				FEATURE_PAYMENT_TRANSACTION_FEES_10,
-				FEATURE_HELP_CENTER_SUPPORT,
-			];
-		}
-
-		return [
-			FEATURE_CUSTOM_DOMAIN,
-			FEATURE_BEAUTIFUL_THEMES,
-			FEATURE_PAGES,
-			FEATURE_USERS,
-			FEATURE_POST_EDITS_HISTORY,
-			FEATURE_NEWSLETTERS_RSS,
-			FEATURE_SECURITY_BRUTE_FORCE,
-			FEATURE_SMART_REDIRECTS,
-			FEATURE_ALWAYS_ONLINE,
-			FEATURE_PAYMENT_TRANSACTION_FEES_10,
-		];
+		return [ FEATURE_UNLIMITED_ENTITIES ];
 	},
 
 	get2023PlanComparisonFeatureOverride: () => {
-		if ( isTrailMapVariant() ) {
-			return [
-				FEATURE_USERS,
-				FEATURE_1_WEBSITE,
-				FEATURE_UNLIMITED_TRAFFIC,
-				FEATURE_BANDWIDTH,
-				FEATURE_FREE_SSL_CERTIFICATE,
-				FEATURE_CDN,
-				FEATURE_POST_EDITS_HISTORY,
-				FEATURE_HELP_CENTER_SUPPORT,
-				FEATURE_COMMISSION_FEE_STANDARD_FEATURES,
-			];
-		}
-
 		return [
 			FEATURE_BEAUTIFUL_THEMES,
 			FEATURE_PAGES,
@@ -633,54 +572,35 @@ const getPlanFreeDetails = (): IncompleteWPcomPlan => ( {
 			FEATURE_SECURITY_BRUTE_FORCE,
 			FEATURE_SMART_REDIRECTS,
 			FEATURE_ALWAYS_ONLINE,
-			FEATURE_BANDWIDTH,
-			FEATURE_FAST_DNS,
+			FEATURE_PAYMENT_TRANSACTION_FEES_10,
 			FEATURE_GLOBAL_EDGE_CACHING,
 			FEATURE_CDN,
-			FEATURE_DATACENTRE_FAILOVER,
-			FEATURE_WP_UPDATES,
 			FEATURE_MULTI_SITE,
-			FEATURE_SECURITY_MALWARE,
+			FEATURE_WP_UPDATES,
 			FEATURE_SECURITY_DDOS,
-			FEATURE_PAYMENT_TRANSACTION_FEES_10,
-			FEATURE_COMMISSION_FEE_STANDARD_FEATURES,
-			FEATURE_GROUP_PAYMENT_TRANSACTION_FEES,
+			FEATURE_SECURITY_MALWARE,
+			FEATURE_DATACENTRE_FAILOVER,
+			FEATURE_BANDWIDTH,
+			FEATURE_FAST_DNS,
 		];
 	},
-	get2023PricingGridSignupJetpackFeatures: () =>
-		isTrailMapVariant()
-			? []
-			: [
-					FEATURE_PAID_SUBSCRIBERS_JP,
-					FEATURE_PREMIUM_CONTENT_JP,
-					FEATURE_DONATIONS_AND_TIPS_JP,
-					FEATURE_PAYMENT_BUTTONS_JP,
-					FEATURE_STATS_JP,
-					FEATURE_LTD_SOCIAL_MEDIA_JP,
-					FEATURE_CONTACT_FORM_JP,
-			  ],
-	get2023PlanComparisonJetpackFeatureOverride: () =>
-		isTrailMapVariant()
-			? []
-			: [
-					FEATURE_PAID_SUBSCRIBERS_JP,
-					FEATURE_DONATIONS_AND_TIPS_JP,
-					FEATURE_PREMIUM_CONTENT_JP,
-					FEATURE_PAYMENT_BUTTONS_JP,
-					FEATURE_STATS_JP,
-					FEATURE_SPAM_JP,
-					FEATURE_CONTACT_FORM_JP,
-					FEATURE_SITE_ACTIVITY_LOG_JP,
-					FEATURE_SHARES_SOCIAL_MEDIA_JP,
-			  ],
-	get2023PricingGridSignupStorageOptions: () => {
+	get2023PricingGridSignupJetpackFeatures: () => {
+		return [];
+	},
+	get2023PlanComparisonJetpackFeatureOverride: () => {
 		return [
-			{
-				slug: FEATURE_1GB_STORAGE,
-				isAddOn: false,
-			},
+			FEATURE_PAID_SUBSCRIBERS_JP,
+			FEATURE_DONATIONS_AND_TIPS_JP,
+			FEATURE_PREMIUM_CONTENT_JP,
+			FEATURE_PAYMENT_BUTTONS_JP,
+			FEATURE_STATS_JP,
+			FEATURE_SPAM_JP,
+			FEATURE_CONTACT_FORM_JP,
+			FEATURE_SITE_ACTIVITY_LOG_JP,
+			FEATURE_UNLTD_SOCIAL_MEDIA_JP,
 		];
 	},
+	getStorageFeature: () => FEATURE_1GB_STORAGE,
 	getPlanComparisonFeatureLabels: () => ( {
 		[ FEATURE_SHARES_SOCIAL_MEDIA_JP ]: i18n.translate( '%d shares per month', { args: [ 30 ] } ),
 		[ FEATURE_COMMISSION_FEE_STANDARD_FEATURES ]: i18n.translate( '10%' ),
@@ -775,6 +695,12 @@ const getPlanBloggerDetails = (): IncompleteWPcomPlan => ( {
 	// Features not displayed but used for checking plan abilities
 	getIncludedFeatures: () => [ FEATURE_AUDIO_UPLOADS ],
 	getInferiorFeatures: () => [],
+	getCancellationFeatures: () => [
+		FEATURE_FAST_SUPPORT_FROM_EXPERTS,
+		FEATURE_AUDIO_UPLOADS,
+		FEATURE_NO_ADS,
+		FEATURE_MEMBERSHIPS,
+	],
 } );
 
 const getPlanPersonalDetails = (): IncompleteWPcomPlan => ( {
@@ -817,17 +743,24 @@ const getPlanPersonalDetails = (): IncompleteWPcomPlan => ( {
 			FEATURE_JETPACK_ESSENTIAL,
 			FEATURE_FAST_SUPPORT_FROM_EXPERTS,
 			FEATURE_FREE_THEMES,
+			isEnabled( 'global-styles/on-personal-plan' ) ? FEATURE_STYLE_CUSTOMIZATION : null,
 			FEATURE_6GB_STORAGE,
 			FEATURE_NO_ADS,
 			FEATURE_MEMBERSHIPS,
 			FEATURE_PREMIUM_CONTENT_BLOCK,
 			FEATURE_PAYMENT_TRANSACTION_FEES_8,
 		] ),
-	getSignupFeatures: () => [
-		FEATURE_FREE_DOMAIN,
-		FEATURE_FAST_SUPPORT_FROM_EXPERTS,
-		FEATURE_FREE_THEMES,
-	],
+	getSignupFeatures: () => {
+		const baseFeatures = [
+			FEATURE_FREE_DOMAIN,
+			FEATURE_FAST_SUPPORT_FROM_EXPERTS,
+			FEATURE_FREE_THEMES,
+		];
+
+		return isEnabled( 'global-styles/on-personal-plan' )
+			? [ ...baseFeatures, FEATURE_STYLE_CUSTOMIZATION ]
+			: baseFeatures;
+	},
 	getBlogSignupFeatures: () => [
 		FEATURE_FREE_DOMAIN,
 		FEATURE_FAST_SUPPORT_FROM_EXPERTS,
@@ -838,61 +771,49 @@ const getPlanPersonalDetails = (): IncompleteWPcomPlan => ( {
 		FEATURE_FAST_SUPPORT_FROM_EXPERTS,
 		FEATURE_ALL_FREE_FEATURES,
 	],
-	getSignupCompareAvailableFeatures: () => [
-		FEATURE_CUSTOM_DOMAIN,
-		FEATURE_HOSTING,
-		FEATURE_NO_ADS,
-		FEATURE_COLLECT_PAYMENTS_V2,
-		FEATURE_FAST_SUPPORT_FROM_EXPERTS,
-	],
-	get2023PricingGridSignupWpcomFeatures: () => {
-		if ( isTrailMapVariant() ) {
-			return [
-				FEATURE_CUSTOM_DOMAIN,
-				FEATURE_USERS,
-				FEATURE_20_PREMIUM_THEMES,
-				FEATURE_LIMITED_STATS,
-				FEATURE_AD_FREE_EXPERIENCE,
-				FEATURE_1_WEBSITE,
-				FEATURE_UNLIMITED_TRAFFIC,
-				FEATURE_BANDWIDTH,
-				FEATURE_FREE_SSL_CERTIFICATE,
-				FEATURE_CDN,
-				FEATURE_POST_EDITS_HISTORY,
-				FEATURE_PAYMENT_TRANSACTION_FEES_8,
-				FEATURE_HELP_CENTER_SUPPORT,
-			];
-		}
-
-		return [
+	getSignupCompareAvailableFeatures: () => {
+		const baseFeatures = [
 			FEATURE_CUSTOM_DOMAIN,
-			WPCOM_FEATURES_PREMIUM_THEMES_LIMITED,
-			FEATURE_AD_FREE_EXPERIENCE,
-			FEATURE_FAST_DNS,
-			FEATURE_PAYMENT_TRANSACTION_FEES_8,
+			FEATURE_HOSTING,
+			FEATURE_NO_ADS,
+			FEATURE_COLLECT_PAYMENTS_V2,
+			FEATURE_FAST_SUPPORT_FROM_EXPERTS,
 		];
+
+		return isEnabled( 'global-styles/on-personal-plan' )
+			? [ ...baseFeatures, FEATURE_STYLE_CUSTOMIZATION ]
+			: baseFeatures;
+	},
+	get2023PricingGridSignupWpcomFeatures: () => {
+		const baseFeatures = [
+			FEATURE_UNLIMITED_ENTITIES,
+			FEATURE_CUSTOM_DOMAIN,
+			FEATURE_AD_FREE_EXPERIENCE,
+			WPCOM_FEATURES_PREMIUM_THEMES_LIMITED,
+			FEATURE_FAST_SUPPORT_FROM_EXPERTS,
+		];
+
+		return isEnabled( 'global-styles/on-personal-plan' )
+			? [ ...baseFeatures, FEATURE_STYLE_CUSTOMIZATION ]
+			: baseFeatures;
+	},
+	get2023PricingGridSignupJetpackFeatures: () => {
+		return [];
 	},
 	get2023PlanComparisonFeatureOverride: () => {
-		if ( isTrailMapVariant() ) {
-			return [ FEATURE_AD_FREE_EXPERIENCE, FEATURE_CUSTOM_DOMAIN, FEATURE_HELP_CENTER_SUPPORT ];
-		}
-
-		return [
+		const baseFeatures = [
 			FEATURE_CUSTOM_DOMAIN,
 			FEATURE_AD_FREE_EXPERIENCE,
 			FEATURE_FAST_DNS,
 			FEATURE_PAYMENT_TRANSACTION_FEES_8,
 			FEATURE_PREMIUM_THEMES,
 		];
+
+		return isEnabled( 'global-styles/on-personal-plan' )
+			? [ ...baseFeatures, FEATURE_STYLE_CUSTOMIZATION ]
+			: baseFeatures;
 	},
-	get2023PricingGridSignupStorageOptions: () => {
-		return [
-			{
-				slug: FEATURE_6GB_STORAGE,
-				isAddOn: false,
-			},
-		];
-	},
+	getStorageFeature: () => FEATURE_6GB_STORAGE,
 	getPlanComparisonFeatureLabels: () => ( {
 		[ FEATURE_PREMIUM_THEMES ]: i18n.translate( 'Dozens of premium themes' ),
 		[ FEATURE_SHARES_SOCIAL_MEDIA_JP ]: i18n.translate( '%d shares per month', { args: [ 30 ] } ),
@@ -938,6 +859,11 @@ const getPlanPersonalDetails = (): IncompleteWPcomPlan => ( {
 	// Features not displayed but used for checking plan abilities
 	getIncludedFeatures: () => [ FEATURE_AUDIO_UPLOADS ],
 	getInferiorFeatures: () => [],
+	getCancellationFeatures: () => [
+		FEATURE_FAST_SUPPORT_FROM_EXPERTS,
+		FEATURE_AD_FREE_EXPERIENCE,
+		FEATURE_AUDIO_UPLOADS,
+	],
 } );
 
 const getPlanEcommerceDetails = (): IncompleteWPcomPlan => ( {
@@ -979,7 +905,7 @@ const getPlanEcommerceDetails = (): IncompleteWPcomPlan => ( {
 			FEATURE_JETPACK_ADVANCED,
 			isLoggedInMonthlyPricing && FEATURE_FAST_SUPPORT_FROM_EXPERTS,
 			isEnabled( 'themes/premium' ) ? WPCOM_FEATURES_PREMIUM_THEMES_UNLIMITED : null,
-			FEATURE_200GB_STORAGE,
+			FEATURE_50GB_STORAGE,
 			FEATURE_NO_ADS,
 			FEATURE_MEMBERSHIPS,
 			FEATURE_PREMIUM_CONTENT_BLOCK,
@@ -1043,42 +969,20 @@ const getPlanEcommerceDetails = (): IncompleteWPcomPlan => ( {
 			PREMIUM_DESIGN_FOR_STORES,
 		].filter( isValueTruthy ),
 	get2023PricingGridSignupWpcomFeatures: () => {
-		if ( isTrailMapVariant() ) {
-			return [
-				FEATURE_CUSTOM_DOMAIN,
-				FEATURE_USERS,
-				FEATURE_48_PREMIUM_THEMES,
-				FEATURE_REAL_TIME_STATS,
-				FEATURE_AD_FREE_EXPERIENCE,
-				FEATURE_STYLE_CUSTOMIZATION,
-				FEATURE_VIDEOPRESS_JP,
-				FEATURE_INSTALL_PLUGINS,
-				FEATURE_PRE_INSTALLED_SECURITY_PERF_PLUGINS,
-				FEATURE_1_WEBSITE,
-				FEATURE_UNLIMITED_TRAFFIC,
-				FEATURE_BANDWIDTH,
-				FEATURE_FREE_SSL_CERTIFICATE,
-				FEATURE_CDN,
-				FEATURE_SITE_BACKUPS_AND_RESTORE,
-				FEATURE_FREE_MIGRATIONS,
-				FEATURE_AUTOMATED_BURST_SCALING,
-				FEATURE_WAF_V2,
-				FEATURE_SECURITY_DDOS,
-				FEATURE_FULL_DATA_CENTER_REDUNDANCIES,
-				FEATURE_REAL_TIME_SECURITY_SCANS,
-				FEATURE_SITE_STAGING_SITES,
-				FEATURE_LOCAL_DEVELOPMENT_ENVIRONMENT,
-				FEATURE_GITHUB_DEPLOYMENTS,
-				FEATURE_DEV_TOOLS,
-				FEATURE_DATABASE_ACCESS,
-				FEATURE_WEB_SERVER_SETTINGS,
-				FEATURE_PAYMENT_TRANSACTION_FEES_0,
-				FEATURE_STORE_DESIGN,
-				FEATURE_PRE_INSTALLED_ECOMMERCE_PLUGINS,
-				FEATURE_PRIORITY_24_7_SUPPORT,
-			];
-		}
-
+		return [
+			FEATURE_UNLIMITED_ENTITIES,
+			FEATURE_CUSTOM_DOMAIN,
+			FEATURE_AD_FREE_EXPERIENCE,
+			FEATURE_THEMES_PREMIUM_AND_STORE,
+			FEATURE_PRIORITY_24_7_SUPPORT,
+			FEATURE_STYLE_CUSTOMIZATION,
+			FEATURE_CONNECT_ANALYTICS,
+			FEATURE_UPLOAD_PLUGINS,
+			FEATURE_DEV_TOOLS,
+			FEATURE_WOOCOMMERCE_HOSTING,
+		];
+	},
+	get2023PlanComparisonFeatureOverride: () => {
 		return [
 			FEATURE_CUSTOM_DOMAIN,
 			FEATURE_WOOCOMMERCE_HOSTING,
@@ -1091,7 +995,6 @@ const getPlanEcommerceDetails = (): IncompleteWPcomPlan => ( {
 			FEATURE_MIN_MAX_ORDER_QUANTITY,
 			FEATURE_STOCK_NOTIFS,
 			FEATURE_DYNAMIC_UPSELLS,
-			FEATURE_LOYALTY_PROG,
 			FEATURE_CUSTOM_MARKETING_AUTOMATION,
 			FEATURE_BULK_DISCOUNTS,
 			FEATURE_INVENTORY_MGMT,
@@ -1101,17 +1004,6 @@ const getPlanEcommerceDetails = (): IncompleteWPcomPlan => ( {
 			FEATURE_PAYMENT_TRANSACTION_FEES_0_ALL,
 		];
 	},
-	get2023PlanComparisonFeatureOverride: () => {
-		if ( isTrailMapVariant() ) {
-			return [
-				FEATURE_CUSTOM_DOMAIN,
-				FEATURE_STORE_DESIGN,
-				FEATURE_PRE_INSTALLED_ECOMMERCE_PLUGINS,
-			];
-		}
-
-		return [];
-	},
 	getCheckoutFeatures: () => [
 		FEATURE_CUSTOM_DOMAIN,
 		FEATURE_PRIORITY_24_7_SUPPORT,
@@ -1119,32 +1011,17 @@ const getPlanEcommerceDetails = (): IncompleteWPcomPlan => ( {
 		FEATURE_ACCEPT_PAYMENTS,
 		FEATURE_SHIPPING_CARRIERS,
 		FEATURE_UNLIMITED_PRODUCTS_SERVICES,
-		FEATURE_LOYALTY_PROG,
 		FEATURE_INVENTORY,
 		FEATURE_CUSTOM_MARKETING_AUTOMATION,
 	],
 	get2023PricingGridSignupJetpackFeatures: () => [],
-	get2023PricingGridSignupStorageOptions: ( showLegacyStorageFeature, isCurrentPlan ) => {
-		let storageOptionSlugs = [] as StorageOption[ 'slug' ][];
-		const storageAddOns = [
-			FEATURE_50GB_STORAGE_ADD_ON,
-			FEATURE_100GB_STORAGE_ADD_ON,
-		] as StorageOption[ 'slug' ][];
-
+	getStorageFeature: ( showLegacyStorageFeature, isCurrentPlan ) => {
 		if ( showLegacyStorageFeature && isCurrentPlan ) {
-			storageOptionSlugs = [ FEATURE_200GB_STORAGE ];
-		} else {
-			storageOptionSlugs = isEnabled( 'plans/updated-storage-labels' )
-				? [ FEATURE_50GB_STORAGE, ...storageAddOns ]
-				: [ FEATURE_200GB_STORAGE ];
+			return FEATURE_200GB_STORAGE;
 		}
-
-		return storageOptionSlugs.map( ( slug ) => {
-			return {
-				slug: slug,
-				isAddOn: storageAddOns.includes( slug ),
-			};
-		} );
+		return isEnabled( 'plans/updated-storage-labels' )
+			? FEATURE_50GB_STORAGE
+			: FEATURE_200GB_STORAGE;
 	},
 	getPlanComparisonFeatureLabels: () => ( {
 		[ FEATURE_PREMIUM_THEMES ]: i18n.translate( 'Unlimited premium themes' ),
@@ -1188,6 +1065,14 @@ const getPlanEcommerceDetails = (): IncompleteWPcomPlan => ( {
 		WPCOM_FEATURES_BACKUPS,
 	],
 	getInferiorFeatures: () => [],
+	getCancellationFeatures: () => [
+		FEATURE_ACCEPT_PAYMENTS_V2,
+		FEATURE_SHIPPING_CARRIERS,
+		FEATURE_ECOMMERCE_MARKETING,
+		FEATURE_SELL_SHIP,
+		FEATURE_PLUGINS_THEMES,
+		FEATURE_ADVANCED_SEO_TOOLS,
+	],
 } );
 
 const getWooExpressMediumPlanCompareFeatures = (): string[] => [
@@ -1288,14 +1173,7 @@ const getPlanWooExpressMediumDetails = (): IncompleteWPcomPlan => ( {
 	],
 	getPlanCompareFeatures: () => getWooExpressPlanCompareFeatures(),
 	get2023PlanComparisonFeatureOverride: () => getWooExpressMediumPlanCompareFeatures(),
-	get2023PricingGridSignupStorageOptions: () => {
-		return [
-			{
-				slug: FEATURE_200GB_STORAGE,
-				isAddOn: false,
-			},
-		];
-	},
+	getStorageFeature: () => FEATURE_200GB_STORAGE,
 	getTagline: () =>
 		i18n.translate(
 			'Learn more about everything included with Woo Express Performance and take advantage of its powerful marketplace features.'
@@ -1324,14 +1202,7 @@ const getPlanWooExpressSmallDetails = (): IncompleteWPcomPlan => ( {
 	],
 	getPlanCompareFeatures: () => getWooExpressPlanCompareFeatures(),
 	get2023PlanComparisonFeatureOverride: () => getWooExpressSmallPlanCompareFeatures(),
-	get2023PricingGridSignupStorageOptions: () => {
-		return [
-			{
-				slug: FEATURE_50GB_STORAGE,
-				isAddOn: false,
-			},
-		];
-	},
+	getStorageFeature: () => FEATURE_50GB_STORAGE,
 	getTitle: () => i18n.translate( 'Essential' ),
 	getPlanTagline: () =>
 		i18n.translate( 'Everything you need to set up your store and start selling your products.' ),
@@ -1479,26 +1350,17 @@ const getPlanPremiumDetails = (): IncompleteWPcomPlan => ( {
 			FEATURE_GOOGLE_ANALYTICS,
 		].filter( isValueTruthy ),
 	get2023PricingGridSignupWpcomFeatures: () => {
-		if ( isTrailMapVariant() ) {
-			return [
-				FEATURE_CUSTOM_DOMAIN,
-				FEATURE_USERS,
-				FEATURE_48_PREMIUM_THEMES,
-				FEATURE_REAL_TIME_STATS,
-				FEATURE_AD_FREE_EXPERIENCE,
-				FEATURE_STYLE_CUSTOMIZATION,
-				FEATURE_VIDEOPRESS_JP,
-				FEATURE_1_WEBSITE,
-				FEATURE_UNLIMITED_TRAFFIC,
-				FEATURE_BANDWIDTH,
-				FEATURE_FREE_SSL_CERTIFICATE,
-				FEATURE_CDN,
-				FEATURE_POST_EDITS_HISTORY,
-				FEATURE_PAYMENT_TRANSACTION_FEES_4,
-				FEATURE_FAST_SUPPORT_FROM_EXPERTS,
-			];
-		}
-
+		return [
+			FEATURE_UNLIMITED_ENTITIES,
+			FEATURE_CUSTOM_DOMAIN,
+			FEATURE_AD_FREE_EXPERIENCE,
+			WPCOM_FEATURES_PREMIUM_THEMES_UNLIMITED,
+			FEATURE_FAST_SUPPORT_FROM_EXPERTS,
+			FEATURE_STYLE_CUSTOMIZATION,
+			FEATURE_CONNECT_ANALYTICS,
+		];
+	},
+	get2023PlanComparisonFeatureOverride: () => {
 		return [
 			FEATURE_CUSTOM_DOMAIN,
 			FEATURE_FAST_SUPPORT_FROM_EXPERTS,
@@ -1507,19 +1369,6 @@ const getPlanPremiumDetails = (): IncompleteWPcomPlan => ( {
 			FEATURE_STYLE_CUSTOMIZATION,
 			FEATURE_PAYMENT_TRANSACTION_FEES_4,
 		];
-	},
-	get2023PlanComparisonFeatureOverride: () => {
-		if ( isTrailMapVariant() ) {
-			return [
-				FEATURE_CUSTOM_DOMAIN,
-				FEATURE_REAL_TIME_STATS,
-				FEATURE_STYLE_CUSTOMIZATION,
-				FEATURE_VIDEOPRESS_JP,
-				FEATURE_FAST_SUPPORT_FROM_EXPERTS,
-			];
-		}
-
-		return [];
 	},
 	getCheckoutFeatures: () => [
 		FEATURE_CUSTOM_DOMAIN,
@@ -1532,30 +1381,18 @@ const getPlanPremiumDetails = (): IncompleteWPcomPlan => ( {
 		FEATURE_UNLTD_SOCIAL_MEDIA_JP,
 		FEATURE_SITE_ACTIVITY_LOG_JP,
 	],
-	get2023PricingGridSignupJetpackFeatures: () =>
-		isTrailMapVariant()
-			? []
-			: [
-					FEATURE_VIDEOPRESS_JP,
-					FEATURE_UNLTD_SOCIAL_MEDIA_JP,
-					FEATURE_SITE_ACTIVITY_LOG_JP,
-					FEATURE_STATS_PAID,
-			  ],
-	get2023PricingGridSignupStorageOptions: () => {
-		return [
-			{
-				slug: FEATURE_13GB_STORAGE,
-				isAddOn: false,
-			},
-		];
+	get2023PricingGridSignupJetpackFeatures: () => {
+		return [];
 	},
+	getStorageFeature: () => FEATURE_13GB_STORAGE,
 	getPlanComparisonFeatureLabels: () => ( {
 		[ FEATURE_PREMIUM_THEMES ]: i18n.translate( 'Unlimited premium themes' ),
 		[ FEATURE_SHARES_SOCIAL_MEDIA_JP ]: i18n.translate( 'Unlimited shares' ),
 		[ FEATURE_COMMISSION_FEE_STANDARD_FEATURES ]: i18n.translate( '4%' ),
 	} ),
-	get2023PlanComparisonJetpackFeatureOverride: () =>
-		isTrailMapVariant() ? [] : [ FEATURE_PAYPAL_JP, FEATURE_VIDEOPRESS_JP, FEATURE_STATS_PAID ],
+	get2023PlanComparisonJetpackFeatureOverride: () => {
+		return [ FEATURE_PAYPAL_JP, FEATURE_VIDEOPRESS_JP, FEATURE_STATS_PAID ];
+	},
 	// Features not displayed but used for checking plan abilities
 	getIncludedFeatures: () => [
 		FEATURE_AUDIO_UPLOADS,
@@ -1565,6 +1402,13 @@ const getPlanPremiumDetails = (): IncompleteWPcomPlan => ( {
 		WPCOM_FEATURES_BACKUPS,
 	],
 	getInferiorFeatures: () => [],
+	getCancellationFeatures: () => [
+		FEATURE_FAST_SUPPORT_FROM_EXPERTS,
+		WPCOM_FEATURES_PREMIUM_THEMES_UNLIMITED,
+		FEATURE_STYLE_CUSTOMIZATION,
+		FEATURE_WORDADS_INSTANT,
+		FEATURE_AD_FREE_EXPERIENCE,
+	],
 } );
 
 const getPlanBusinessDetails = (): IncompleteWPcomPlan => ( {
@@ -1671,96 +1515,19 @@ const getPlanBusinessDetails = (): IncompleteWPcomPlan => ( {
 			FEATURE_SFTP_DATABASE,
 		].filter( isValueTruthy ),
 	get2023PricingGridSignupWpcomFeatures: () => {
-		if ( isTrailMapVariant() ) {
-			return [
-				FEATURE_CUSTOM_DOMAIN,
-				FEATURE_USERS,
-				FEATURE_48_PREMIUM_THEMES,
-				FEATURE_REAL_TIME_STATS,
-				FEATURE_AD_FREE_EXPERIENCE,
-				FEATURE_STYLE_CUSTOMIZATION,
-				FEATURE_VIDEOPRESS_JP,
-				FEATURE_INSTALL_PLUGINS,
-				FEATURE_PRE_INSTALLED_SECURITY_PERF_PLUGINS,
-				FEATURE_1_WEBSITE,
-				FEATURE_UNLIMITED_TRAFFIC,
-				FEATURE_BANDWIDTH,
-				FEATURE_FREE_SSL_CERTIFICATE,
-				FEATURE_CDN,
-				FEATURE_SITE_BACKUPS_AND_RESTORE,
-				FEATURE_FREE_MIGRATIONS,
-				FEATURE_AUTOMATED_BURST_SCALING,
-				FEATURE_WAF_V2,
-				FEATURE_SECURITY_DDOS,
-				FEATURE_FULL_DATA_CENTER_REDUNDANCIES,
-				FEATURE_REAL_TIME_SECURITY_SCANS,
-				FEATURE_SITE_STAGING_SITES,
-				FEATURE_LOCAL_DEVELOPMENT_ENVIRONMENT,
-				FEATURE_GITHUB_DEPLOYMENTS,
-				FEATURE_DEV_TOOLS,
-				FEATURE_DATABASE_ACCESS,
-				FEATURE_WEB_SERVER_SETTINGS,
-				FEATURE_PAYMENT_TRANSACTION_FEES_2,
-				FEATURE_PRIORITY_24_7_SUPPORT,
-			];
-		}
-
 		return [
+			FEATURE_UNLIMITED_ENTITIES,
 			FEATURE_CUSTOM_DOMAIN,
+			FEATURE_AD_FREE_EXPERIENCE,
+			WPCOM_FEATURES_PREMIUM_THEMES_UNLIMITED,
 			FEATURE_PRIORITY_24_7_SUPPORT,
-			FEATURE_PLUGINS_THEMES,
-			FEATURE_BANDWIDTH,
-			FEATURE_UNLIMITED_TRAFFIC,
-			FEATURE_GLOBAL_EDGE_CACHING,
-			FEATURE_BURST,
-			FEATURE_WAF_V2,
-			FEATURE_CDN,
-			FEATURE_CPUS,
-			FEATURE_DATACENTRE_FAILOVER,
-			FEATURE_ISOLATED_INFRA,
-			FEATURE_SECURITY_MALWARE,
-			FEATURE_TIERED_STORAGE_PLANS_AVAILABLE,
-			FEATURE_REAL_TIME_SECURITY_SCANS,
-			/***
-			 * Probably should be moved to Jetpack Features
-			 */
-			FEATURE_SPAM_JP,
-			FEATURE_SECURITY_DDOS,
+			FEATURE_STYLE_CUSTOMIZATION,
+			FEATURE_CONNECT_ANALYTICS,
+			FEATURE_UPLOAD_PLUGINS,
 			FEATURE_DEV_TOOLS,
-			FEATURE_SITE_STAGING_SITES,
-			FEATURE_SEAMLESS_STAGING_PRODUCTION_SYNCING,
-			FEATURE_WP_UPDATES,
-			FEATURE_MULTI_SITE,
-			FEATURE_SECURITY_VULNERABILITY_NOTIFICATIONS,
-			FEATURE_PAYMENT_TRANSACTION_FEES_0_WOO,
-			FEATURE_PAYMENT_TRANSACTION_FEES_2_REGULAR,
 		];
 	},
 	get2023PlanComparisonFeatureOverride: () => {
-		if ( isTrailMapVariant() ) {
-			return [
-				FEATURE_CUSTOM_DOMAIN,
-				FEATURE_INSTALL_PLUGINS,
-				FEATURE_PRE_INSTALLED_SECURITY_PERF_PLUGINS,
-				FEATURE_REAL_TIME_SECURITY_SCANS,
-				FEATURE_SITE_BACKUPS_AND_RESTORE,
-				FEATURE_FREE_MIGRATIONS,
-				FEATURE_AUTOMATED_BURST_SCALING,
-				FEATURE_WAF_V2,
-				FEATURE_SECURITY_DDOS,
-				FEATURE_FULL_DATA_CENTER_REDUNDANCIES,
-				FEATURE_REAL_TIME_SECURITY_SCANS,
-				FEATURE_SITE_STAGING_SITES,
-				FEATURE_LOCAL_DEVELOPMENT_ENVIRONMENT,
-				FEATURE_GITHUB_DEPLOYMENTS,
-				FEATURE_DEV_TOOLS,
-				FEATURE_DATABASE_ACCESS,
-				FEATURE_WEB_SERVER_SETTINGS,
-				FEATURE_PRIORITY_24_7_SUPPORT,
-				FEATURE_COMMISSION_FEE_WOO_FEATURES,
-			];
-		}
-
 		return [
 			FEATURE_CUSTOM_DOMAIN,
 			FEATURE_PRIORITY_24_7_SUPPORT,
@@ -1788,6 +1555,7 @@ const getPlanBusinessDetails = (): IncompleteWPcomPlan => ( {
 			FEATURE_PAYMENT_TRANSACTION_FEES_0_WOO,
 			FEATURE_PAYMENT_TRANSACTION_FEES_2_REGULAR,
 			FEATURE_COMMISSION_FEE_WOO_FEATURES,
+			FEATURE_COMMISSION_FEE_STANDARD_FEATURES,
 		];
 	},
 	getCheckoutFeatures: () => [
@@ -1803,17 +1571,19 @@ const getPlanBusinessDetails = (): IncompleteWPcomPlan => ( {
 		FEATURE_SECURITY_DDOS,
 		FEATURE_SITE_STAGING_SITES,
 	],
-	get2023PricingGridSignupJetpackFeatures: () =>
-		isTrailMapVariant()
-			? []
-			: [
-					FEATURE_REALTIME_BACKUPS_JP,
-					FEATURE_ONE_CLICK_RESTORE_V2,
-					FEATURE_UPTIME_MONITOR_JP,
-					FEATURE_ES_SEARCH_JP,
-					FEATURE_PLUGIN_AUTOUPDATE_JP,
-					FEATURE_SEO_JP,
-			  ],
+	get2023PricingGridSignupJetpackFeatures: () => {
+		return [];
+	},
+	get2023PlanComparisonJetpackFeatureOverride: () => {
+		return [
+			FEATURE_REALTIME_BACKUPS_JP,
+			FEATURE_ONE_CLICK_RESTORE_V2,
+			FEATURE_UPTIME_MONITOR_JP,
+			FEATURE_ES_SEARCH_JP,
+			FEATURE_PLUGIN_AUTOUPDATE_JP,
+			FEATURE_SEO_JP,
+		];
+	},
 	getPlanComparisonFeatureLabels: () => {
 		const featureLabels: Record< Feature, TranslateResult > = {
 			[ FEATURE_PREMIUM_THEMES ]: i18n.translate( 'Unlimited premium themes' ),
@@ -1825,7 +1595,6 @@ const getPlanBusinessDetails = (): IncompleteWPcomPlan => ( {
 			[ FEATURE_MIN_MAX_ORDER_QUANTITY ]: i18n.translate( 'Available with paid plugins' ),
 			[ FEATURE_STOCK_NOTIFS ]: i18n.translate( 'Available with paid plugins' ),
 			[ FEATURE_DYNAMIC_UPSELLS ]: i18n.translate( 'Available with paid plugins' ),
-			[ FEATURE_LOYALTY_PROG ]: i18n.translate( 'Available with paid plugins' ),
 			[ FEATURE_CUSTOM_MARKETING_AUTOMATION ]: i18n.translate( 'Available with paid plugins' ),
 			[ FEATURE_BULK_DISCOUNTS ]: i18n.translate( 'Available with paid plugins' ),
 			[ FEATURE_INVENTORY_MGMT ]: i18n.translate( 'Available with plugins' ),
@@ -1833,39 +1602,25 @@ const getPlanBusinessDetails = (): IncompleteWPcomPlan => ( {
 			[ FEATURE_SELL_60_COUNTRIES ]: i18n.translate( 'Available with plugins' ),
 			[ FEATURE_SHIPPING_INTEGRATIONS ]: i18n.translate( 'Available with paid plugins' ),
 			[ FEATURE_SHARES_SOCIAL_MEDIA_JP ]: i18n.translate( 'Unlimited shares' ),
+			[ FEATURE_STORE_DESIGN ]: i18n.translate( 'Available with plugins' ),
 			[ FEATURE_COMMISSION_FEE_STANDARD_FEATURES ]: i18n.translate( '2%' ),
 			[ FEATURE_COMMISSION_FEE_WOO_FEATURES ]: i18n.translate( '0%' ),
 		};
-		if ( ! isTrailMapVariant() ) {
-			featureLabels[ FEATURE_STORE_DESIGN ] = i18n.translate( 'Available with plugins' );
-		}
 
 		return featureLabels;
 	},
-	get2023PricingGridSignupStorageOptions: ( showLegacyStorageFeature, isCurrentPlan ) => {
-		let storageOptionSlugs = [] as StorageOption[ 'slug' ][];
-		const storageAddOns = [
-			FEATURE_50GB_STORAGE_ADD_ON,
-			FEATURE_100GB_STORAGE_ADD_ON,
-		] as StorageOption[ 'slug' ][];
 
+	getStorageFeature: ( showLegacyStorageFeature, isCurrentPlan ) => {
 		if ( showLegacyStorageFeature ) {
 			/* If the user is currently has a legacy plan with 200GB storage space, the capacity will decrease to
 			 * 50GB if they change their billing terms.
 			 */
-			storageOptionSlugs = isCurrentPlan ? [ FEATURE_200GB_STORAGE ] : [ FEATURE_50GB_STORAGE ];
-		} else {
-			storageOptionSlugs = isEnabled( 'plans/updated-storage-labels' )
-				? [ FEATURE_50GB_STORAGE, ...storageAddOns ]
-				: [ FEATURE_200GB_STORAGE ];
+			return isCurrentPlan ? FEATURE_200GB_STORAGE : FEATURE_50GB_STORAGE;
 		}
 
-		return storageOptionSlugs.map( ( slug ) => {
-			return {
-				slug: slug,
-				isAddOn: storageAddOns.includes( slug ),
-			};
-		} );
+		return isEnabled( 'plans/updated-storage-labels' )
+			? FEATURE_50GB_STORAGE
+			: FEATURE_200GB_STORAGE;
 	},
 	getHostingSignupFeatures: ( term ) => () =>
 		compact( [
@@ -1927,6 +1682,15 @@ const getPlanBusinessDetails = (): IncompleteWPcomPlan => ( {
 			FEATURE_SENSEI_JETPACK,
 		] ),
 	getSenseiHighlightedFeatures: () => [ FEATURE_CUSTOM_DOMAIN, FEATURE_SENSEI_SUPPORT ],
+	getCancellationFeatures: () => [
+		FEATURE_PLUGINS_THEMES,
+		FEATURE_ADVANCED_SEO_TOOLS,
+		FEATURE_DEV_TOOLS,
+		FEATURE_SEAMLESS_STAGING_PRODUCTION_SYNCING,
+		FEATURE_SITE_BACKUPS_AND_RESTORE,
+		FEATURE_AD_FREE_EXPERIENCE,
+		FEATURE_FAST_SUPPORT_FROM_EXPERTS,
+	],
 } );
 
 const getPlanProDetails = (): IncompleteWPcomPlan => ( {
@@ -2019,7 +1783,6 @@ const getPlanWooExpressPlusDetails = (): IncompleteWPcomPlan => ( {
 	getDescription: () => '',
 	get2023PricingGridSignupWpcomFeatures: () => [],
 	get2023PricingGridSignupJetpackFeatures: () => [],
-	get2023PricingGridSignupStorageOptions: () => [],
 } );
 
 // The following is not a real plan, we are adding it here so that
@@ -2038,7 +1801,6 @@ const get2023EnterprisGrideDetails = (): IncompleteWPcomPlan => ( {
 	getDescription: () => '',
 	get2023PricingGridSignupWpcomFeatures: () => [],
 	get2023PricingGridSignupJetpackFeatures: () => [],
-	get2023PricingGridSignupStorageOptions: () => [],
 } );
 
 const getJetpackPersonalDetails = (): IncompleteJetpackPlan => ( {
@@ -2206,6 +1968,7 @@ const getJetpackBusinessDetails = (): IncompleteJetpackPlan => ( {
 			WPCOM_FEATURES_SCAN,
 			WPCOM_FEATURES_ANTISPAM,
 			WPCOM_FEATURES_BACKUPS,
+			FEATURE_STATS_PAID,
 		] ),
 	getInferiorFeatures: () => [ FEATURE_JETPACK_BACKUP_DAILY, FEATURE_JETPACK_BACKUP_DAILY_MONTHLY ],
 } );
@@ -2313,9 +2076,10 @@ const getPlanJetpackSecurityT1Details = (): IncompleteJetpackPlan => ( {
 		),
 	getFeaturedDescription: () =>
 		translate(
-			'This bundle includes:{{ul}}{{li}}VaultPress Backup (10GB){{/li}}{{li}}Scan{{/li}}{{li}}Akismet Anti-spam (10k API calls/mo){{/li}}{{/ul}}',
+			'Comprehensive site security made simple.{{br}}{{/br}}{{br}}{{/br}}This bundle includes:{{ul}}{{li}}VaultPress Backup (10GB){{/li}}{{li}}Scan{{/li}}{{li}}Akismet Anti-spam (10k API calls/mo){{/li}}{{/ul}}',
 			{
 				components: {
+					br: <br />,
 					ul: <ul />,
 					li: <li />,
 				},
@@ -2558,6 +2322,63 @@ const getPlanJetpackStarterDetails = (): IncompleteJetpackPlan => ( {
 		translate( 'Best-in-class support from WordPress experts' ),
 	],
 	getInferiorFeatures: () => [ FEATURE_JETPACK_BACKUP_DAILY, FEATURE_JETPACK_BACKUP_DAILY_MONTHLY ],
+} );
+
+const getPlanJetpackGrowthDetails = (): IncompleteJetpackPlan => ( {
+	...getJetpackCommonPlanDetails(),
+	group: GROUP_JETPACK,
+	type: TYPE_JETPACK_GROWTH,
+	getTitle: () => translate( 'Growth', { context: 'Jetpack product name' } ),
+	getDescription: () => translate( 'Grow your audience effortlessly.' ),
+	availableFor: ( plan ) => [ PLAN_JETPACK_FREE, ...JETPACK_LEGACY_PLANS ].includes( plan ),
+	getRecommendedFor: () => [
+		{ tag: JETPACK_TAG_FOR_WOOCOMMERCE_STORES, label: translate( 'WooCommerce Stores' ) },
+		{ tag: JETPACK_TAG_FOR_MEMBERSHIP_SITES, label: translate( 'Membership sites' ) },
+		{ tag: JETPACK_TAG_FOR_BLOGGERS, label: translate( 'Bloggers' ) },
+	],
+	getFeaturedDescription: () =>
+		translate(
+			'Grow your audience effortlessly.{{br}}{{/br}}{{br}}{{/br}}This bundle includes:{{ul}}{{li}}Stats (10k site views - upgradeable){{/li}}{{li}}Social{{/li}}{{li}}Newsletter and monetization tools{{/li}}{{/ul}}',
+			{
+				components: {
+					br: <br />,
+					ul: <ul />,
+					li: <li />,
+				},
+				comment:
+					'{{ul}}{{ul/}} represents an unordered list, and {{li}}{/li} represents a list item',
+			}
+		),
+	getTagline: () =>
+		translate(
+			'Essential tools to help you grow your audience, track visitor engagement, and turn leads into loyal customers and advocates.'
+		),
+	getLightboxDescription: () =>
+		translate(
+			'Essential tools to help you grow your audience, track visitor engagement, and turn leads into loyal customers and advocates.'
+		),
+	getPlanCardFeatures: () => [ FEATURE_JETPACK_SOCIAL_V1_MONTHLY, FEATURE_STATS_PAID ],
+	getIncludedFeatures: () => [
+		FEATURE_EARN_AD,
+		FEATURE_UNLIMITED_SUBSCRIBERS,
+		FEATURE_SIMPLE_PAYMENTS,
+	],
+	getWhatIsIncluded: () => [
+		translate( '40+ Jetpack blocks' ),
+		translate( 'Display ads with WordAds' ),
+		translate( 'Pay with PayPal' ),
+		translate( 'Paid content gating' ),
+		translate( 'Paywall access' ),
+		translate( 'Newsletter' ),
+		translate( 'Priority support' ),
+	],
+	getBenefits: () => [
+		translate( 'Quickly create content that stands out' ),
+		translate( 'Grow your subscribers with simple subscribe forms' ),
+		translate( 'Create content for paid subscribers' ),
+		translate( 'Sell access to premium content' ),
+		translate( 'Easily accept tips and donations' ),
+	],
 } );
 
 const getPlanJetpackGoldenTokenDetails = (): IncompleteJetpackPlan => ( {
@@ -3080,36 +2901,6 @@ export const PLANS_LIST: Record< string, Plan | JetpackPlan | WPComPlan > = {
 		getStoreSlug: () => PLAN_ENTERPRISE_GRID_WPCOM,
 		getPathSlug: () => 'enterprise',
 	},
-	// Not a real plan. This is used to show the Bluehost cloud offering
-	// in the landing pages for now
-	[ PLAN_BLUEHOST_CLOUD ]: {
-		...get2023EnterprisGrideDetails(),
-		term: TERM_ANNUALLY,
-		getBillingTimeFrame: () => '',
-		getProductId: () => 0,
-		getStoreSlug: () => PLAN_BLUEHOST_CLOUD,
-	},
-	[ PLAN_BLUEHOST_CLOUD_MONTHLY ]: {
-		...get2023EnterprisGrideDetails(),
-		term: TERM_MONTHLY,
-		getBillingTimeFrame: () => '',
-		getProductId: () => 0,
-		getStoreSlug: () => PLAN_BLUEHOST_CLOUD_MONTHLY,
-	},
-	[ PLAN_BLUEHOST_CLOUD_2Y ]: {
-		...get2023EnterprisGrideDetails(),
-		term: TERM_BIENNIALLY,
-		getBillingTimeFrame: () => '',
-		getProductId: () => 0,
-		getStoreSlug: () => PLAN_BLUEHOST_CLOUD_2Y,
-	},
-	[ PLAN_BLUEHOST_CLOUD_3Y ]: {
-		...get2023EnterprisGrideDetails(),
-		term: TERM_TRIENNIALLY,
-		getBillingTimeFrame: () => '',
-		getProductId: () => 0,
-		getStoreSlug: () => PLAN_BLUEHOST_CLOUD_3Y,
-	},
 	[ PLAN_ECOMMERCE_3_YEARS ]: {
 		...getPlanEcommerceDetails(),
 		term: TERM_TRIENNIALLY,
@@ -3309,7 +3100,6 @@ export const PLANS_LIST: Record< string, Plan | JetpackPlan | WPComPlan > = {
 			PRODUCT_JETPACK_SEARCH_BI_YEARLY,
 			PRODUCT_JETPACK_STATS_BI_YEARLY,
 			PRODUCT_JETPACK_CRM,
-			PRODUCT_JETPACK_CREATOR_BI_YEARLY,
 		],
 		getWhatIsIncluded: () => [
 			translate( 'VaultPress Backup: Real-time backups as you edit' ),
@@ -3345,7 +3135,6 @@ export const PLANS_LIST: Record< string, Plan | JetpackPlan | WPComPlan > = {
 			PRODUCT_JETPACK_SEARCH,
 			PRODUCT_JETPACK_STATS_YEARLY,
 			PRODUCT_JETPACK_CRM,
-			PRODUCT_JETPACK_CREATOR_YEARLY,
 		],
 		getWhatIsIncluded: () => [
 			translate( 'VaultPress Backup: Real-time backups as you edit' ),
@@ -3381,7 +3170,6 @@ export const PLANS_LIST: Record< string, Plan | JetpackPlan | WPComPlan > = {
 			PRODUCT_JETPACK_SEARCH_MONTHLY,
 			PRODUCT_JETPACK_STATS_MONTHLY,
 			PRODUCT_JETPACK_CRM_MONTHLY,
-			PRODUCT_JETPACK_CREATOR_MONTHLY,
 		],
 		getWhatIsIncluded: () => [
 			translate( 'VaultPress Backup: Real-time backups as you edit' ),
@@ -3564,6 +3352,37 @@ export const PLANS_LIST: Record< string, Plan | JetpackPlan | WPComPlan > = {
 		],
 	},
 
+	[ PLAN_JETPACK_GROWTH_MONTHLY ]: {
+		...getPlanJetpackGrowthDetails(),
+		...getMonthlyTimeframe(),
+		getProductId: () => 2021,
+		getStoreSlug: () => PLAN_JETPACK_GROWTH_MONTHLY,
+		getPathSlug: () => 'growth-monthly',
+		getProductsIncluded: () => [ PRODUCT_JETPACK_STATS_MONTHLY, PRODUCT_JETPACK_SOCIAL_V1_MONTHLY ],
+	},
+
+	[ PLAN_JETPACK_GROWTH_YEARLY ]: {
+		...getPlanJetpackGrowthDetails(),
+		...getAnnualTimeframe(),
+		getProductId: () => 2022,
+		getStoreSlug: () => PLAN_JETPACK_GROWTH_YEARLY,
+		getPathSlug: () => 'growth-yearly',
+		getMonthlySlug: () => PLAN_JETPACK_GROWTH_MONTHLY,
+		getProductsIncluded: () => [ PRODUCT_JETPACK_STATS_YEARLY, PRODUCT_JETPACK_SOCIAL_V1_YEARLY ],
+	},
+
+	[ PLAN_JETPACK_GROWTH_BI_YEARLY ]: {
+		...getPlanJetpackGrowthDetails(),
+		...getBiAnnualTimeframe(),
+		getProductId: () => 2023,
+		getStoreSlug: () => PLAN_JETPACK_GROWTH_BI_YEARLY,
+		getPathSlug: () => 'growth-bi-yearly',
+		getProductsIncluded: () => [
+			PRODUCT_JETPACK_STATS_BI_YEARLY,
+			PRODUCT_JETPACK_SOCIAL_V1_BI_YEARLY,
+		],
+	},
+
 	[ PLAN_JETPACK_GOLDEN_TOKEN ]: {
 		...getPlanJetpackGoldenTokenDetails(),
 		...getAnnualTimeframe(),
@@ -3593,14 +3412,7 @@ export const PLANS_LIST: Record< string, Plan | JetpackPlan | WPComPlan > = {
 			FEATURE_P2_PRIORITY_CHAT_EMAIL_SUPPORT,
 			FEATURE_P2_ACTIVITY_OVERVIEW,
 		],
-		get2023PricingGridSignupStorageOptions: () => {
-			return [
-				{
-					slug: FEATURE_P2_13GB_STORAGE,
-					isAddOn: false,
-				},
-			];
-		},
+		getStorageFeature: () => FEATURE_P2_13GB_STORAGE,
 		getPlanCompareFeatures: () => [
 			// pay attention to ordering, shared features should align on /plan page
 			FEATURE_P2_13GB_STORAGE,
@@ -3652,14 +3464,7 @@ PLANS_LIST[ PLAN_P2_FREE ] = {
 		FEATURE_P2_SIMPLE_SEARCH,
 		FEATURE_P2_CUSTOMIZATION_OPTIONS,
 	],
-	get2023PricingGridSignupStorageOptions: () => {
-		return [
-			{
-				slug: FEATURE_P2_3GB_STORAGE,
-				isAddOn: false,
-			},
-		];
-	},
+	getStorageFeature: () => FEATURE_P2_3GB_STORAGE,
 	getPlanCompareFeatures: () => [
 		// pay attention to ordering, shared features should align on /plan page
 		FEATURE_P2_3GB_STORAGE,

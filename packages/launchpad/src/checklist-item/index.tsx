@@ -1,8 +1,8 @@
 import { Badge, Gridicon } from '@automattic/components';
 import { Button } from '@wordpress/components';
+import { __, isRTL } from '@wordpress/i18n';
 import clsx from 'clsx';
-import { translate, useRtl } from 'i18n-calypso';
-import type { Task } from '../types';
+import type { Task, Expandable } from '../types';
 import type { FC, Key } from 'react';
 
 import './style.scss';
@@ -11,21 +11,12 @@ interface Props {
 	key?: Key;
 	task: Task;
 	isPrimaryAction?: boolean;
+	expandable?: Expandable;
 	onClick?: () => void;
 }
 
-const ChecklistItem: FC< Props > = ( { task, isPrimaryAction, onClick } ) => {
-	const isRtl = useRtl();
+const ChecklistItem: FC< Props > = ( { task, isPrimaryAction, expandable, onClick } ) => {
 	const { id, completed, disabled = false, title, subtitle, actionDispatch } = task;
-
-	// Display chevron if task is incomplete. Don't display chevron and badge at the same time.
-	const shouldDisplayChevron = ! completed && ! disabled && ! task.badge_text;
-
-	// Display task counter if task is incomplete and has the count properties;
-	const shouldDisplayTaskCounter =
-		task.target_repetitions &&
-		null !== task.repetition_count &&
-		undefined !== task.repetition_count;
 
 	// If the task says we should use the Calypso path, ensure we use that link for the button's href.
 	// This allows the UI routing code to hook into the URL changes and should reduce full-page (re)loads
@@ -38,7 +29,25 @@ const ChecklistItem: FC< Props > = ( { task, isPrimaryAction, onClick } ) => {
 		disabled,
 		...( disabled ? {} : { href: buttonHref } ),
 	};
+
 	const onClickHandler = onClick || actionDispatch;
+	const isClickable = !! ( buttonProps.href || onClickHandler );
+
+	// Display chevron if task is incomplete.
+	// Don't display chevron and badge at the same time.
+	// Don't display chevron if item is not clickable.
+	const shouldDisplayChevron = ! completed && ! disabled && ! task.badge_text && isClickable;
+
+	// Display task counter if task is incomplete and has the count properties;
+	const shouldDisplayTaskCounter =
+		task.target_repetitions &&
+		null !== task.repetition_count &&
+		undefined !== task.repetition_count;
+
+	// Make sure the button keeps the button styles if it is not clickable.
+	const buttonClassName = isClickable ? '' : 'components-button';
+	const ButtonElement = isClickable ? Button : 'div';
+
 	return (
 		<li
 			className={ clsx( 'checklist-item__task', {
@@ -46,20 +55,21 @@ const ChecklistItem: FC< Props > = ( { task, isPrimaryAction, onClick } ) => {
 				pending: ! completed,
 				enabled: ! disabled,
 				disabled: disabled,
+				expanded: expandable && expandable.isOpen,
 			} ) }
 		>
 			{ isPrimaryAction ? (
-				<Button
-					className="checklist-item__checklist-primary-button"
+				<ButtonElement
+					className={ clsx( 'checklist-item__checklist-primary-button', buttonClassName ) }
 					data-task={ id }
 					onClick={ onClickHandler }
 					{ ...buttonProps }
 				>
 					{ title }
-				</Button>
+				</ButtonElement>
 			) : (
-				<Button
-					className="checklist-item__task-content"
+				<ButtonElement
+					className={ clsx( 'checklist-item__task-content', buttonClassName ) }
 					data-task={ id }
 					onClick={ onClickHandler }
 					{ ...buttonProps }
@@ -68,7 +78,7 @@ const ChecklistItem: FC< Props > = ( { task, isPrimaryAction, onClick } ) => {
 						// show checkmark for completed tasks regardless if they are disabled or kept active
 						<div className="checklist-item__checkmark-container">
 							<Gridicon
-								aria-label={ translate( 'Task complete' ) }
+								aria-label={ __( 'Task complete', 'launchpad' ) }
 								className="checklist-item__checkmark"
 								icon="checkmark"
 								size={ 18 }
@@ -84,14 +94,17 @@ const ChecklistItem: FC< Props > = ( { task, isPrimaryAction, onClick } ) => {
 					) }
 					{ shouldDisplayChevron && (
 						<Gridicon
-							aria-label={ translate( 'Task enabled' ) }
+							aria-label={ __( 'Task enabled', 'launchpad' ) }
 							className="checklist-item__chevron"
-							icon={ `chevron-${ isRtl ? 'left' : 'right' }` }
+							icon={ `chevron-${ isRTL() ? 'left' : 'right' }` }
 							size={ 18 }
 						/>
 					) }
 					{ subtitle && <p className="checklist-item__subtext">{ subtitle }</p> }
-				</Button>
+				</ButtonElement>
+			) }
+			{ expandable && expandable.isOpen && (
+				<div className="checklist-item__expanded-content">{ expandable.content }</div>
 			) }
 		</li>
 	);

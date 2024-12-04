@@ -117,11 +117,15 @@ export async function createAccount( {
 		} );
 	}
 
-	const isNewAccountCreated = 'created_account' in response && !! response?.created_account;
-
 	if ( 'error' in response ) {
-		return response;
-	} else if ( isNewAccountCreated ) {
+		return { ...response, isNewAccountCreated: false };
+	}
+
+	// Handling special case where users log in via social using signup form.
+	let isNewAccountCreated = true;
+	if ( service && response && 'created_account' in response && ! response?.created_account ) {
+		isNewAccountCreated = false;
+	} else {
 		const username = response?.signup_sandbox_username || response?.username;
 
 		recordNewAccountCreation( {
@@ -130,9 +134,7 @@ export async function createAccount( {
 			username,
 			signupType: service ? 'social' : 'default',
 		} );
-
-		return response;
 	}
 
-	return response;
+	return { ...response, isNewAccountCreated };
 }

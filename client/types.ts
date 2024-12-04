@@ -24,6 +24,7 @@ export interface Theme {
 	author: string;
 	author_uri: string;
 	cost: ThemeCost;
+	block_theme?: boolean;
 	date_launched: string;
 	date_updated: string;
 	demo_uri?: string;
@@ -55,7 +56,8 @@ export interface Theme {
 	theme_uri: string;
 	theme_tier: {
 		slug: string;
-		feature: string;
+		feature?: string;
+		featureList?: string[];
 		platform: string;
 	};
 	trending_rank: number;

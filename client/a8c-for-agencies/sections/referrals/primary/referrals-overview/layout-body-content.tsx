@@ -12,6 +12,8 @@ import {
 	A4A_REFERRALS_FAQ,
 	A4A_MARKETPLACE_PRODUCTS_LINK,
 } from 'calypso/a8c-for-agencies/components/sidebar-menu/lib/constants';
+import StepSection from 'calypso/a8c-for-agencies/components/step-section';
+import StepSectionItem from 'calypso/a8c-for-agencies/components/step-section-item';
 import TextPlaceholder from 'calypso/a8c-for-agencies/components/text-placeholder';
 import { A4A_DOWNLOAD_LINK_ON_GITHUB } from 'calypso/a8c-for-agencies/constants';
 import {
@@ -26,12 +28,11 @@ import { useDispatch, useSelector } from 'calypso/state';
 import { recordTracksEvent } from 'calypso/state/analytics/actions';
 import { savePreference } from 'calypso/state/preferences/actions';
 import { getPreference } from 'calypso/state/preferences/selectors';
-import StepSection from '../../common/step-section';
-import StepSectionItem from '../../common/step-section-item';
+import ConsolidatedViews from '../../consolidated-view';
 import { getAccountStatus } from '../../lib/get-account-status';
 import tipaltiLogo from '../../lib/tipalti-logo';
 import ReferralList from '../../referrals-list';
-import type { Referral } from '../../types';
+import type { Referral, ReferralInvoice } from '../../types';
 
 interface Props {
 	isAutomatedReferral?: boolean;
@@ -40,6 +41,10 @@ interface Props {
 	isLoading: boolean;
 	dataViewsState: DataViewsState;
 	setDataViewsState: ( callback: ( prevState: DataViewsState ) => DataViewsState ) => void;
+	referralInvoices: ReferralInvoice[];
+	isFetchingInvoices: boolean;
+	isArchiveView?: boolean;
+	onReferralRefetch?: () => void;
 }
 
 export default function LayoutBodyContent( {
@@ -49,6 +54,10 @@ export default function LayoutBodyContent( {
 	isLoading,
 	dataViewsState,
 	setDataViewsState,
+	referralInvoices,
+	isFetchingInvoices,
+	isArchiveView,
+	onReferralRefetch,
 }: Props ) {
 	const translate = useTranslate();
 	const dispatch = useDispatch();
@@ -67,6 +76,7 @@ export default function LayoutBodyContent( {
 	}, [ dispatch ] );
 
 	const accountStatus = getAccountStatus( tipaltiData, translate );
+	const isPayable = !! tipaltiData?.IsPayable;
 
 	const hasPayeeAccount = !! accountStatus?.status;
 	let bankAccountCTAText = hasPayeeAccount
@@ -115,10 +125,20 @@ export default function LayoutBodyContent( {
 	if ( isAutomatedReferral && referrals?.length ) {
 		return (
 			<>
+				{ ! dataViewsState.selectedItem && ! isArchiveView && (
+					<ConsolidatedViews
+						referrals={ referrals }
+						referralInvoices={ referralInvoices }
+						isFetchingInvoices={ isFetchingInvoices }
+					/>
+				) }
 				<ReferralList
 					referrals={ referrals }
+					referralInvoices={ referralInvoices }
 					dataViewsState={ dataViewsState }
 					setDataViewsState={ setDataViewsState }
+					isArchiveView={ isArchiveView }
+					onArchiveReferral={ () => onReferralRefetch?.() }
 				/>
 			</>
 		);
@@ -139,7 +159,7 @@ export default function LayoutBodyContent( {
 				<div className="referrals-overview__section-icons">
 					<JetpackLogo className="jetpack-logo" size={ 24 } />
 					<WooCommerceLogo className="woocommerce-logo" size={ 40 } />
-					<img src={ pressableIcon } alt="Pressable" />
+					<img className="pressable-icon" src={ pressableIcon } alt="Pressable" />
 					<WordPressLogo className="a4a-overview-hosting__wp-logo" size={ 24 } />
 				</div>
 			) }
@@ -261,6 +281,7 @@ export default function LayoutBodyContent( {
 										children: translate( 'Get started' ),
 										compact: true,
 										primary: hasPayeeAccount,
+										disabled: ! isPayable,
 										href: A4A_MARKETPLACE_PRODUCTS_LINK,
 										onClick: onGetStartedClick,
 									} }
@@ -293,9 +314,14 @@ export default function LayoutBodyContent( {
 								description={
 									isAutomatedReferral ? (
 										<>
-											{ translate( 'Receive a revenue share of 5 basis points on the' ) }
-											<br />
-											{ translate( 'total payments volume.' ) }
+											{ translate(
+												'Receive a revenue share of 5 basis points on the total payments{{nbsp/}}volume.',
+												{
+													components: {
+														nbsp: <>&nbsp;</>,
+													},
+												}
+											) }
 										</>
 									) : (
 										translate(

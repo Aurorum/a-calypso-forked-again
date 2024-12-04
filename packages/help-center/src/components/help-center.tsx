@@ -2,122 +2,60 @@
 /**
  * External Dependencies
  */
-import { useSelect, useDispatch } from '@wordpress/data';
+import { initializeAnalytics } from '@automattic/calypso-analytics';
+import config from '@automattic/calypso-config';
+import { useGetSupportInteractions } from '@automattic/odie-client/src/data/use-get-support-interactions';
+import { useSelect } from '@wordpress/data';
 import { createPortal, useEffect, useRef } from '@wordpress/element';
-import { useSelector } from 'react-redux';
-import getPrimarySiteId from 'calypso/state/selectors/get-primary-site-id';
-import { getSelectedSiteId } from 'calypso/state/ui/selectors';
 /**
  * Internal Dependencies
  */
-import { useChatStatus, useZendeskMessaging, useStillNeedHelpURL } from '../hooks';
-import { HELP_CENTER_STORE, USER_STORE, SITE_STORE } from '../stores';
+import {
+	HelpCenterRequiredContextProvider,
+	useHelpCenterContext,
+	type HelpCenterRequiredInformation,
+} from '../contexts/HelpCenterContext';
+import { useActionHooks } from '../hooks';
+import { useOpeningCoordinates } from '../hooks/use-opening-coordinates';
+import { HELP_CENTER_STORE } from '../stores';
 import { Container } from '../types';
 import HelpCenterContainer from './help-center-container';
-import type { SiteSelect, UserSelect, HelpCenterSelect } from '@automattic/data-stores';
+import HelpCenterSmooch from './help-center-smooch';
+import type { HelpCenterSelect } from '@automattic/data-stores';
 import '../styles.scss';
-
-function useMessagingBindings( hasActiveChats: boolean, isMessagingScriptLoaded: boolean ) {
-	const { setShowMessagingLauncher, setShowMessagingWidget } = useDispatch( HELP_CENTER_STORE );
-	const { showMessagingLauncher, showMessagingWidget } = useSelect( ( select ) => {
-		const helpCenterSelect: HelpCenterSelect = select( HELP_CENTER_STORE );
-		return {
-			showMessagingLauncher: helpCenterSelect.isMessagingLauncherShown(),
-			showMessagingWidget: helpCenterSelect.isMessagingWidgetShown(),
-		};
-	}, [] );
-
-	useEffect( () => {
-		if ( typeof window.zE !== 'function' || ! isMessagingScriptLoaded ) {
-			return;
-		}
-
-		window.zE( 'messenger:on', 'open', function () {
-			setShowMessagingWidget( true );
-		} );
-		window.zE( 'messenger:on', 'close', function () {
-			setShowMessagingWidget( false );
-		} );
-		window.zE( 'messenger:on', 'unreadMessages', function ( count ) {
-			if ( Number( count ) > 0 ) {
-				setShowMessagingLauncher( true );
-			}
-		} );
-	}, [ isMessagingScriptLoaded, setShowMessagingLauncher, setShowMessagingWidget ] );
-
-	useEffect( () => {
-		if ( typeof window.zE !== 'function' || ! isMessagingScriptLoaded ) {
-			return;
-		}
-		// `showMessagingLauncher` starts off as undefined. This check means don't touch the widget if we're in default state.
-		if ( typeof showMessagingLauncher === 'boolean' ) {
-			window.zE( 'messenger', showMessagingLauncher ? 'show' : 'hide' );
-		}
-	}, [ showMessagingLauncher, isMessagingScriptLoaded ] );
-
-	useEffect( () => {
-		if ( typeof window.zE !== 'function' || ! isMessagingScriptLoaded ) {
-			return;
-		}
-
-		window.zE( 'messenger', showMessagingWidget ? 'open' : 'close' );
-	}, [ showMessagingWidget, isMessagingScriptLoaded ] );
-
-	useEffect( () => {
-		if ( hasActiveChats ) {
-			setShowMessagingLauncher( true );
-		}
-	}, [ setShowMessagingLauncher, hasActiveChats ] );
-}
 
 const HelpCenter: React.FC< Container > = ( {
 	handleClose,
 	hidden,
 	currentRoute = window.location.pathname + window.location.search,
+	shouldUseHelpCenterExperience,
 } ) => {
 	const portalParent = useRef( document.createElement( 'div' ) ).current;
-	const { isHelpCenterShown, storedSite } = useSelect( ( select ) => {
+
+	const { isHelpCenterShown, isMinimized } = useSelect( ( select ) => {
 		const helpCenterSelect: HelpCenterSelect = select( HELP_CENTER_STORE );
 		return {
-			storedSite: helpCenterSelect.getSite(),
 			isHelpCenterShown: helpCenterSelect.isHelpCenterShown(),
+			isMinimized: helpCenterSelect.getIsMinimized(),
 		};
 	}, [] );
-	const { setSite } = useDispatch( HELP_CENTER_STORE );
-
-	const siteId = useSelector( getSelectedSiteId );
-	const primarySiteId = useSelector( getPrimarySiteId );
-
-	useSelect( ( select ) => ( select( USER_STORE ) as UserSelect ).getCurrentUser(), [] );
-
-	/**
-	 * This site is provided by the backed in Editing Toolkit.
-	 * It's difficult to get the site information on the client side in Atomic sites. So we moved this challenge to the backend,
-	 * and forwarded the data using `localize_script` to the client side.
-	 */
-	const backendProvidedSite = window?.helpCenterData?.currentSite;
-
-	const site = useSelect(
-		( select ) => ( select( SITE_STORE ) as SiteSelect ).getSite( siteId || primarySiteId ),
-		[ siteId || primarySiteId ]
-	);
-
-	const usedSite = backendProvidedSite || site;
+	const { currentUser, canConnectToZendesk } = useHelpCenterContext();
+	const { data: supportInteractionsOpen, isLoading: isLoadingOpenInteractions } =
+		useGetSupportInteractions( 'zendesk', 10, 'open' );
+	const hasOpenZendeskConversations =
+		! isLoadingOpenInteractions && supportInteractionsOpen
+			? supportInteractionsOpen?.length > 0
+			: false;
 
 	useEffect( () => {
-		setSite( usedSite );
-	}, [ usedSite, setSite, storedSite ] );
+		if ( currentUser ) {
+			initializeAnalytics( currentUser, null );
+		}
+	}, [ currentUser ] );
 
-	useStillNeedHelpURL();
+	useActionHooks();
 
-	const { hasActiveChats, isEligibleForChat } = useChatStatus();
-	const { isMessagingScriptLoaded } = useZendeskMessaging(
-		'zendesk_support_chat_key',
-		( isHelpCenterShown && isEligibleForChat ) || hasActiveChats,
-		isEligibleForChat && hasActiveChats
-	);
-
-	useMessagingBindings( hasActiveChats, isMessagingScriptLoaded );
+	const openingCoordinates = useOpeningCoordinates( isHelpCenterShown, isMinimized );
 
 	useEffect( () => {
 		const classes = [ 'help-center' ];
@@ -135,13 +73,30 @@ const HelpCenter: React.FC< Container > = ( {
 	}, [ portalParent, handleClose ] );
 
 	return createPortal(
-		<HelpCenterContainer
-			handleClose={ handleClose }
-			hidden={ hidden }
-			currentRoute={ currentRoute }
-		/>,
+		<>
+			<HelpCenterContainer
+				handleClose={ handleClose }
+				hidden={ hidden }
+				currentRoute={ currentRoute }
+				openingCoordinates={ openingCoordinates }
+			/>
+			{ shouldUseHelpCenterExperience && canConnectToZendesk && (
+				<HelpCenterSmooch enableAuth={ isHelpCenterShown || hasOpenZendeskConversations } />
+			) }
+		</>,
 		portalParent
 	);
 };
 
-export default HelpCenter;
+export default function ContextualizedHelpCenter(
+	props: Container & HelpCenterRequiredInformation
+) {
+	const shouldUseHelpCenterExperience =
+		config.isEnabled( 'help-center-experience' ) || props.shouldUseHelpCenterExperience;
+
+	return (
+		<HelpCenterRequiredContextProvider value={ { ...props, shouldUseHelpCenterExperience } }>
+			<HelpCenter { ...props } shouldUseHelpCenterExperience={ shouldUseHelpCenterExperience } />
+		</HelpCenterRequiredContextProvider>
+	);
+}

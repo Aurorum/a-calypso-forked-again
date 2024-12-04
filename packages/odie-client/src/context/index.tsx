@@ -1,162 +1,149 @@
-import { createContext, useCallback, useContext, useEffect, useState } from 'react';
-import {
-	broadcastChatClearance,
-	useSetOdieStorage,
-	useOdieBroadcastWithCallbacks,
-	useGetOdieStorage,
-} from '../data';
-import { getOdieInitialMessage } from './get-odie-initial-message';
-import { useLoadPreviousChat } from './use-load-previous-chat';
-import type { Chat, Context, Message, Nudge, OdieAllowedBots } from '../types';
-import type { ReactNode, FC, PropsWithChildren, SetStateAction } from 'react';
+import { recordTracksEvent } from '@automattic/calypso-analytics';
+import { useResetSupportInteraction } from '@automattic/help-center/src/hooks/use-reset-support-interaction';
+import { HELP_CENTER_STORE } from '@automattic/help-center/src/stores';
+import { useSelect } from '@wordpress/data';
+import { createContext, useCallback, useContext, useState } from 'react';
+import { useOdieBroadcastWithCallbacks } from '../data';
+import { useGetCombinedChat } from '../hooks';
+import { isOdieAllowedBot, getHelpCenterZendeskConversationStarted } from '../utils';
+import type {
+	Chat,
+	Message,
+	OdieAllowedBots,
+	ChatStatus,
+	OdieAssistantContextInterface,
+	OdieAssistantProviderProps,
+} from '../types';
+import type { HelpCenterSelect } from '@automattic/data-stores';
 
-// eslint-disable-next-line @typescript-eslint/no-empty-function
-export const noop = () => {};
+const noop = () => {};
 
-/*
- * This is the interface for the context. It contains all the methods and values that are
- * available to the components that are wrapped in the provider.
- *
- */
-type OdieAssistantContextInterface = {
-	addMessage: ( message: Message | Message[] ) => void;
-	botName?: string;
-	botNameSlug: OdieAllowedBots;
-	chat: Chat;
-	clearChat: () => void;
-	initialUserMessage: string | null | undefined;
-	isLoadingChat: boolean;
-	isLoading: boolean;
-	isMinimized?: boolean;
-	isNudging: boolean;
-	isVisible: boolean;
-	extraContactOptions?: ReactNode;
-	lastNudge: Nudge | null;
-	odieClientId: string;
-	sendNudge: ( nudge: Nudge ) => void;
-	selectedSiteId?: number | null;
-	setChat: ( chat: SetStateAction< Chat > ) => void;
-	setIsLoadingChat: ( isLoadingChat: boolean ) => void;
-	setMessageLikedStatus: ( message: Message, liked: boolean ) => void;
-	setContext: ( context: Context ) => void;
-	setIsNudging: ( isNudging: boolean ) => void;
-	setIsVisible: ( isVisible: boolean ) => void;
-	setIsLoading: ( isLoading: boolean ) => void;
-	trackEvent: ( event: string, properties?: Record< string, unknown > ) => void;
-	updateMessage: ( message: Message ) => void;
-	version?: string | null;
-};
-
-const defaultContextInterfaceValues = {
-	addMessage: noop,
-	botName: 'Wapuu',
-	botNameSlug: 'wpcom-support-chat' as OdieAllowedBots,
-	chat: { context: { section_name: '', site_id: null }, messages: [] },
-	clearChat: noop,
-	initialUserMessage: null,
-	isLoadingChat: false,
-	isLoading: false,
-	isMinimized: false,
-	isNudging: false,
-	isVisible: false,
-	lastNudge: null,
-	odieClientId: '',
-	sendNudge: noop,
-	setChat: noop,
-	setIsLoadingChat: noop,
-	setMessageLikedStatus: noop,
-	setContext: noop,
-	setIsNudging: noop,
-	setIsVisible: noop,
-	setIsLoading: noop,
-	trackEvent: noop,
-	updateMessage: noop,
+export const emptyChat: Chat = {
+	supportInteractionId: null,
+	odieId: null,
+	conversationId: null,
+	messages: [],
+	wpcomUserId: null,
+	provider: 'odie',
+	status: 'loading',
 };
 
 // Create a default new context
-const OdieAssistantContext = createContext< OdieAssistantContextInterface >(
-	defaultContextInterfaceValues
-);
+export const OdieAssistantContext = createContext< OdieAssistantContextInterface >( {
+	addMessage: noop,
+	botName: 'Wapuu',
+	botNameSlug: 'wpcom-support-chat' as OdieAllowedBots,
+	chat: emptyChat,
+	canConnectToZendesk: false,
+	clearChat: noop,
+	currentUser: { display_name: 'Me' },
+	isChatLoaded: false,
+	isMinimized: false,
+	isUserEligibleForPaidSupport: false,
+	odieBroadcastClientId: '',
+	setChat: noop,
+	setChatStatus: noop,
+	setMessageLikedStatus: noop,
+	setWaitAnswerToFirstMessageFromHumanSupport: noop,
+	shouldUseHelpCenterExperience: false,
+	trackEvent: noop,
+	waitAnswerToFirstMessageFromHumanSupport: false,
+} );
 
 // Custom hook to access the OdieAssistantContext
-const useOdieAssistantContext = () => useContext( OdieAssistantContext );
+export const useOdieAssistantContext = () => useContext( OdieAssistantContext );
 
 // Generate random client id
-export const odieClientId = Math.random().toString( 36 ).substring( 2, 15 );
+export const odieBroadcastClientId = Math.random().toString( 36 ).substring( 2, 15 );
 
-type OdieAssistantProviderProps = {
-	botName?: string;
-	botNameSlug: OdieAllowedBots;
-	enabled?: boolean;
-	initialUserMessage?: string | null | undefined;
-	isMinimized?: boolean;
-	extraContactOptions?: ReactNode;
-	logger?: ( message: string, properties: Record< string, unknown > ) => void;
-	loggerEventNamePrefix?: string;
-	selectedSiteId?: number | null;
-	version?: string | null;
-	children?: ReactNode;
-} & PropsWithChildren;
-// Create a provider component for the context
-const OdieAssistantProvider: FC< OdieAssistantProviderProps > = ( {
+/**
+ * Provider for the Odie Assistant context.
+ */
+export const OdieAssistantProvider: React.FC< OdieAssistantProviderProps > = ( {
 	botName = 'Wapuu assistant',
-	botNameSlug = 'wpcom-support-chat',
-	initialUserMessage,
-	isMinimized = false,
+	isUserEligibleForPaidSupport = true,
+	canConnectToZendesk = false,
 	extraContactOptions,
-	enabled = true,
-	logger,
-	loggerEventNamePrefix,
 	selectedSiteId,
+	selectedSiteURL,
 	version = null,
+	currentUser,
 	children,
+	shouldUseHelpCenterExperience,
 } ) => {
-	const [ isVisible, setIsVisible ] = useState( false );
-	const [ isLoading, setIsLoading ] = useState( false );
-	const [ isNudging, setIsNudging ] = useState( false );
-	const [ lastNudge, setLastNudge ] = useState< Nudge | null >( null );
-	const existingChatIdString = useGetOdieStorage( 'chat_id' );
+	const { botNameSlug, isMinimized, isChatLoaded } = useSelect( ( select ) => {
+		const store = select( HELP_CENTER_STORE ) as HelpCenterSelect;
 
-	const existingChatId = existingChatIdString ? parseInt( existingChatIdString, 10 ) : null;
-	const existingChat = useLoadPreviousChat( botNameSlug, existingChatId );
+		const odieBotNameSlug = isOdieAllowedBot( store.getOdieBotNameSlug() )
+			? store.getOdieBotNameSlug()
+			: 'wpcom-support-chat';
 
-	const urlSearchParams = new URLSearchParams( window.location.search );
-	const versionParams = urlSearchParams.get( 'version' );
+		return {
+			botNameSlug: odieBotNameSlug as OdieAllowedBots,
+			isMinimized: store.getIsMinimized(),
+			isChatLoaded: store.getIsChatLoaded(),
+		};
+	}, [] );
 
-	const [ chat, setChat ] = useState< Chat >( existingChat );
+	/**
+	 * The main chat thread.
+	 * This is where we manage the state of the chat.
+	 */
+	const { mainChatState, setMainChatState } = useGetCombinedChat(
+		canConnectToZendesk,
+		shouldUseHelpCenterExperience
+	);
 
-	useEffect( () => {
-		if ( existingChat.chat_id ) {
-			setChat( existingChat );
-		}
-	}, [ existingChat, existingChat.chat_id ] );
-
+	/**
+	 * Tracking event.
+	 * Handler to make sure all requests are the same.
+	 */
 	const trackEvent = useCallback(
 		( eventName: string, properties: Record< string, unknown > = {} ) => {
-			const event = loggerEventNamePrefix ? `${ loggerEventNamePrefix }_${ eventName }` : eventName;
-			logger?.( event, {
+			recordTracksEvent( `calypso_odie_${ eventName }`, {
 				...properties,
-				chat_id: chat?.chat_id,
+				chat_id: mainChatState?.odieId,
 				bot_name_slug: botNameSlug,
 			} );
 		},
-		[ botNameSlug, chat?.chat_id, logger, loggerEventNamePrefix ]
+		[ botNameSlug, mainChatState ]
 	);
 
-	const setOdieStorage = useSetOdieStorage( 'chat_id' );
-
+	/**
+	 * Reset the support interaction and clear the chat.
+	 */
+	const resetSupportInteraction = useResetSupportInteraction();
 	const clearChat = useCallback( () => {
-		setOdieStorage( null );
-		setChat( {
-			chat_id: null,
-			messages: [ getOdieInitialMessage( botNameSlug ) ],
-		} );
 		trackEvent( 'chat_cleared', {} );
-		broadcastChatClearance( odieClientId );
-	}, [ botNameSlug, trackEvent, setOdieStorage ] );
+		setMainChatState( emptyChat );
+		resetSupportInteraction();
+	}, [ trackEvent, resetSupportInteraction, setMainChatState ] );
 
+	const [ waitAnswerToFirstMessageFromHumanSupport, setWaitAnswerToFirstMessageFromHumanSupport ] =
+		useState( getHelpCenterZendeskConversationStarted() !== null );
+
+	/**
+	 * Add a new message to the chat.
+	 */
+	const addMessage = ( message: Message | Message[] ) => {
+		setMainChatState( ( prevChat ) => ( {
+			...prevChat,
+			messages: [ ...prevChat.messages, ...( Array.isArray( message ) ? message : [ message ] ) ],
+		} ) );
+	};
+
+	/**
+	 * Set the status of the chat.
+	 */
+	const setChatStatus = ( status: ChatStatus ) => {
+		setMainChatState( ( prevChat ) => ( { ...prevChat, status } ) );
+	};
+
+	/**
+	 * Set the liked status of a message.
+	 */
 	const setMessageLikedStatus = ( message: Message, liked: boolean ) => {
-		setChat( ( prevChat ) => {
+		setMainChatState( ( prevChat ) => {
 			const messageIndex = prevChat.messages.findIndex( ( m ) => m === message );
 			const updatedMessage = { ...message, liked };
 			return {
@@ -170,51 +157,15 @@ const OdieAssistantProvider: FC< OdieAssistantProviderProps > = ( {
 		} );
 	};
 
-	const addMessage = useCallback(
-		( message: Message | Message[] ) => {
-			setChat( ( prevChat ) => {
-				// Normalize message to always be an array
-				const newMessages = Array.isArray( message ) ? message : [ message ];
+	useOdieBroadcastWithCallbacks( { addMessage, clearChat }, odieBroadcastClientId );
 
-				// Filter out 'placeholder' messages if new message is not 'dislike-feedback'
-				const filteredMessages = newMessages.some( ( msg ) => msg.type === 'dislike-feedback' )
-					? prevChat.messages
-					: prevChat.messages.filter( ( msg ) => msg.type !== 'placeholder' );
-
-				// Append new messages at the end
-				return {
-					chat_id: prevChat.chat_id,
-					messages: [ ...filteredMessages, ...newMessages ],
-				};
-			} );
-		},
-		[ setChat ]
-	);
-
-	useOdieBroadcastWithCallbacks( { addMessage, clearChat }, odieClientId );
-
-	const updateMessage = useCallback(
-		( message: Partial< Message > ) => {
-			setChat( ( prevChat ) => {
-				const updatedMessages = prevChat.messages.map( ( prevMessage ) =>
-					( message.internal_message_id &&
-						prevMessage.internal_message_id === message.internal_message_id ) ||
-					( message.message_id && prevMessage.message_id === message.message_id )
-						? { ...prevMessage, ...message }
-						: prevMessage
-				);
-
-				return { ...prevChat, messages: updatedMessages };
-			} );
-		},
-		[ setChat ]
-	);
-
-	const overridenVersion = versionParams || version;
-
-	if ( ! enabled ) {
-		return <>{ children }</>;
-	}
+	/**
+	 * Version for Odie API.
+	 * Set this query param to override the version in the request.
+	 */
+	const urlSearchParams = new URLSearchParams( window.location.search );
+	const versionParams = urlSearchParams.get( 'version' );
+	const overriddenVersion = versionParams || version;
 
 	return (
 		<OdieAssistantContext.Provider
@@ -222,34 +173,28 @@ const OdieAssistantProvider: FC< OdieAssistantProviderProps > = ( {
 				addMessage,
 				botName,
 				botNameSlug,
-				chat,
+				chat: mainChatState,
+				setChat: setMainChatState,
 				clearChat,
+				currentUser,
 				extraContactOptions,
-				initialUserMessage,
-				isLoadingChat: false,
-				isLoading: isLoading,
+				isChatLoaded,
 				isMinimized,
-				isNudging,
-				isVisible,
-				lastNudge,
-				odieClientId,
+				isUserEligibleForPaidSupport,
+				canConnectToZendesk,
+				odieBroadcastClientId,
 				selectedSiteId,
-				sendNudge: setLastNudge,
-				setChat,
-				setIsLoadingChat: noop,
+				selectedSiteURL,
+				setChatStatus,
 				setMessageLikedStatus,
-				setContext: noop,
-				setIsLoading,
-				setIsNudging,
-				setIsVisible,
+				setWaitAnswerToFirstMessageFromHumanSupport,
+				shouldUseHelpCenterExperience: shouldUseHelpCenterExperience ?? false,
 				trackEvent,
-				updateMessage,
-				version: overridenVersion,
+				version: overriddenVersion,
+				waitAnswerToFirstMessageFromHumanSupport,
 			} }
 		>
 			{ children }
 		</OdieAssistantContext.Provider>
 	);
 };
-
-export { OdieAssistantContext, useOdieAssistantContext, OdieAssistantProvider };

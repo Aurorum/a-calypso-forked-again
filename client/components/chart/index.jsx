@@ -10,7 +10,6 @@ import BarContainer from './bar-container';
 
 import './style.scss';
 
-const noop = () => {};
 const isTouch = hasTouch();
 
 /**
@@ -46,18 +45,18 @@ function Chart( {
 	barClick,
 	children,
 	data,
-	isPlaceholder,
+	isPlaceholder = false,
 	isRtl,
-	minBarWidth,
-	minTouchBarWidth,
+	minBarWidth = 15,
+	minTouchBarWidth = 42,
 	numberFormat,
 	translate,
-	chartXPadding,
-	sliceFromBeginning,
+	chartXPadding = 20,
+	sliceFromBeginning = true,
 	onChangeMaxBars,
 	minBarsToBeShown,
-	hideYAxis,
-	hideXAxis,
+	hideYAxis = false,
+	hideXAxis = false,
 } ) {
 	const [ tooltip, setTooltip ] = useState( { isTooltipVisible: false } );
 	const [ sizing, setSizing ] = useState( { clientWidth: 0, hasResized: false } );
@@ -122,6 +121,11 @@ function Chart( {
 			onChangeMaxBars( maxBars );
 		}
 	}, [ maxBars, onChangeMaxBars ] );
+
+	useEffect( () => {
+		// Invalidate (hide) the tooltip if the underlying data changes.
+		setTooltip( { isTooltipVisible: false } );
+	}, [ data ] );
 
 	// Memoize data calculations to avoid performing them too often.
 	const { chartData, isEmptyChart, yMax } = useMemo( () => {
@@ -235,17 +239,6 @@ Chart.propTypes = {
 	minBarsToBeShown: PropTypes.number,
 	hideYAxis: PropTypes.bool,
 	hideXAxis: PropTypes.bool,
-};
-
-Chart.defaultProps = {
-	barClick: noop,
-	isPlaceholder: false,
-	minBarWidth: 15,
-	minTouchBarWidth: 42,
-	chartXPadding: 20,
-	sliceFromBeginning: true,
-	hideYAxis: false,
-	hideXAxis: false,
 };
 
 export default withRtl( localize( Chart ) );

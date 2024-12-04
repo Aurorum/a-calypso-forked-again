@@ -6,8 +6,15 @@ import { hasReceivedRemotePreferences } from 'calypso/state/preferences/selector
 import getIsSubscriptionOnly from 'calypso/state/selectors/get-is-subscription-only';
 import getPrimarySiteId from 'calypso/state/selectors/get-primary-site-id';
 import { requestSite } from 'calypso/state/sites/actions';
-import { canCurrentUserUseCustomerHome, getSite, getSiteSlug } from 'calypso/state/sites/selectors';
+import {
+	canCurrentUserUseCustomerHome,
+	getSite,
+	getSiteSlug,
+	getSiteAdminUrl,
+	isAdminInterfaceWPAdmin,
+} from 'calypso/state/sites/selectors';
 import { hasSitesAsLandingPage } from 'calypso/state/sites/selectors/has-sites-as-landing-page';
+import { getSelectedSiteId } from './state/ui/selectors';
 
 /**
  * @param clientRouter Unused. We can't use the isomorphic router because we want to do redirects.
@@ -41,7 +48,12 @@ async function handleLoggedIn( page, context ) {
 		redirectPath += `?${ context.querystring }`;
 	}
 
-	page.redirect( redirectPath );
+	if ( redirectPath.startsWith( '/' ) ) {
+		page.redirect( redirectPath );
+	} else {
+		// Case for wp-admin redirection when primary site has classic admin interface.
+		window.location.assign( redirectPath );
+	}
 }
 
 // Helper thunk that ensures that the requested site info is fetched into Redux state before we
@@ -83,10 +95,9 @@ async function getLoggedInLandingPage( { dispatch, getState } ) {
 
 	// determine the primary site ID (it's a property of "current user" object) and then
 	// ensure that the primary site info is loaded into Redux before proceeding.
-	const primarySiteId = getPrimarySiteId( getState() );
-	await dispatch( waitForSite( primarySiteId ) );
-
-	const primarySiteSlug = getSiteSlug( getState(), primarySiteId );
+	const primaryOrSelectedSiteId = getSelectedSiteId( getState() ) || getPrimarySiteId( getState() );
+	await dispatch( waitForSite( primaryOrSelectedSiteId ) );
+	const primarySiteSlug = getSiteSlug( getState(), primaryOrSelectedSiteId );
 
 	if ( ! primarySiteSlug ) {
 		if ( getIsSubscriptionOnly( getState() ) ) {
@@ -96,9 +107,16 @@ async function getLoggedInLandingPage( { dispatch, getState } ) {
 		return '/sites';
 	}
 
-	const isCustomerHomeEnabled = canCurrentUserUseCustomerHome( getState(), primarySiteId );
+	const isCustomerHomeEnabled = canCurrentUserUseCustomerHome(
+		getState(),
+		primaryOrSelectedSiteId
+	);
 
 	if ( isCustomerHomeEnabled ) {
+		if ( isAdminInterfaceWPAdmin( getState(), primaryOrSelectedSiteId ) ) {
+			// This URL starts with 'https://' because it's the access to wp-admin.
+			return getSiteAdminUrl( getState(), primaryOrSelectedSiteId );
+		}
 		return `/home/${ primarySiteSlug }`;
 	}
 

@@ -1,4 +1,3 @@
-import config from '@automattic/calypso-config';
 import { memo } from 'react';
 import { connect } from 'react-redux';
 import { getSelectedDomain } from 'calypso/lib/domains';
@@ -22,27 +21,29 @@ const ContactsPrivacy = ( props: ContactsInfoProps ): null | JSX.Element => {
 			privacyAvailable,
 			contactInfoDisclosed,
 			contactInfoDisclosureAvailable,
+			hasPendingContactUpdate,
 			isPendingIcannVerification,
 			registeredViaTrustee,
 			registeredViaTrusteeUrl,
+			supportsGdprConsentManagement,
+			isHundredYearDomain,
 		} = domain;
-
-		const canManageConsent =
-			config.isEnabled( 'domains/gdpr-consent-page' ) && domain.supportsGdprConsentManagement;
 
 		return (
 			<ContactsPrivacyCard
 				selectedDomainName={ props.selectedDomainName }
 				selectedSite={ props.selectedSite }
-				canManageConsent={ canManageConsent }
+				canManageConsent={ supportsGdprConsentManagement }
 				privateDomain={ privateDomain }
 				privacyAvailable={ privacyAvailable }
 				contactInfoDisclosed={ contactInfoDisclosed }
 				contactInfoDisclosureAvailable={ contactInfoDisclosureAvailable }
+				hasPendingContactUpdate={ hasPendingContactUpdate }
 				isPendingIcannVerification={ isPendingIcannVerification }
 				readOnly={ readonly }
 				registeredViaTrustee={ registeredViaTrustee }
 				registeredViaTrusteeUrl={ registeredViaTrusteeUrl }
+				isHundredYearDomain={ isHundredYearDomain }
 			/>
 		);
 	};

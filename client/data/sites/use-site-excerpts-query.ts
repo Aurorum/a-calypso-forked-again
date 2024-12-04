@@ -1,6 +1,7 @@
 import config from '@automattic/calypso-config';
 import { SITE_EXCERPT_REQUEST_FIELDS, SITE_EXCERPT_REQUEST_OPTIONS } from '@automattic/sites';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useCallback } from 'react';
 import { getJetpackSiteCollisions, getUnmappedUrl } from 'calypso/lib/site/utils';
 import { urlToSlug, withoutHttp } from 'calypso/lib/url';
 import wpcom from 'calypso/lib/wp';
@@ -15,7 +16,8 @@ export type SiteVisibility = 'all' | 'deleted';
 const fetchSites = (
 	site_visibility: SiteVisibility = 'all',
 	siteFilter = config< string[] >( 'site_filter' ),
-	additional_fields: string[] = []
+	additional_fields: string[] = [],
+	additional_options: string[] = []
 ): Promise< { sites: SiteExcerptNetworkData[] } > => {
 	return wpcom.me().sites( {
 		apiVersion: '1.2',
@@ -23,16 +25,26 @@ const fetchSites = (
 		include_domain_only: true,
 		site_activity: 'active',
 		fields: additional_fields.concat( SITE_EXCERPT_REQUEST_FIELDS ).join( ',' ),
-		options: SITE_EXCERPT_REQUEST_OPTIONS.join( ',' ),
+		options: additional_options.concat( SITE_EXCERPT_REQUEST_OPTIONS ).join( ',' ),
 		filters: siteFilter.length > 0 ? siteFilter.join( ',' ) : undefined,
 	} );
+};
+
+export const useSiteExcerptsQueryInvalidator = () => {
+	const queryClient = useQueryClient();
+	const invalidate = useCallback(
+		() => queryClient.invalidateQueries( { queryKey: [ USE_SITE_EXCERPTS_QUERY_KEY ] } ),
+		[ queryClient ]
+	);
+	return invalidate;
 };
 
 export const useSiteExcerptsQuery = (
 	fetchFilter?: string[],
 	sitesFilterFn?: ( site: SiteExcerptData ) => boolean,
 	site_visibility: SiteVisibility = 'all',
-	additional_fields: string[] = []
+	additional_fields: string[] = [],
+	additional_options: string[] = []
 ) => {
 	const store = useStore();
 
@@ -44,8 +56,10 @@ export const useSiteExcerptsQuery = (
 			fetchFilter,
 			site_visibility,
 			additional_fields,
+			additional_options,
 		],
-		queryFn: () => fetchSites( site_visibility, fetchFilter, additional_fields ),
+		queryFn: () =>
+			fetchSites( site_visibility, fetchFilter, additional_fields, additional_options ),
 		select: ( data ) => {
 			const sites = data?.sites.map( computeFields( data?.sites ) ) || [];
 			return sitesFilterFn ? sites.filter( sitesFilterFn ) : sites;

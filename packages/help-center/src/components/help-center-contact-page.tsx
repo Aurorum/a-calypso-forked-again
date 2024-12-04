@@ -3,52 +3,31 @@
  * External Dependencies
  */
 import { recordTracksEvent } from '@automattic/calypso-analytics';
-import config from '@automattic/calypso-config';
 import { getPlan } from '@automattic/calypso-products';
-import { Spinner, GMClosureNotice, FormInputValidation } from '@automattic/components';
-import { HelpCenterSelect } from '@automattic/data-stores';
+import { Spinner, GMClosureNotice } from '@automattic/components';
+import { HelpCenterSite } from '@automattic/data-stores';
 import { getLanguage, useIsEnglishLocale, useLocale } from '@automattic/i18n-utils';
-import { useGetOdieStorage, useSetOdieStorage } from '@automattic/odie-client';
-import { useSelect } from '@wordpress/data';
-import { useEffect, useMemo } from '@wordpress/element';
+import { useGetSupportInteractions } from '@automattic/odie-client/src/data';
+import { useLoadZendeskMessaging } from '@automattic/zendesk-client';
+import { Button } from '@wordpress/components';
+import { useEffect, useMemo, useState } from '@wordpress/element';
 import { hasTranslation, sprintf } from '@wordpress/i18n';
-import { comment, Icon } from '@wordpress/icons';
+import { backup, comment, Icon } from '@wordpress/icons';
 import { useI18n } from '@wordpress/react-i18n';
 import clsx from 'clsx';
-import { FC, useState } from 'react';
-import { useSelector } from 'react-redux';
-import { Link } from 'react-router-dom';
-import { getSectionName } from 'calypso/state/ui/selectors';
+import { FC, ReactNode, ReactElement } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 /**
  * Internal Dependencies
  */
-import { BackButton } from '..';
-import {
-	useChatStatus,
-	useChatWidget,
-	useShouldRenderEmailOption,
-	useStillNeedHelpURL,
-	useZendeskMessaging,
-} from '../hooks';
+import { EMAIL_SUPPORT_LOCALES } from '../constants';
+import { useHelpCenterContext } from '../contexts/HelpCenterContext';
+import { useChatStatus, useShouldRenderEmailOption, useStillNeedHelpURL } from '../hooks';
 import { Mail } from '../icons';
-import { HELP_CENTER_STORE } from '../stores';
+import HelpCenterContactSupportOption from './help-center-contact-support-option';
 import { HelpCenterActiveTicketNotice } from './help-center-notice';
-import type { HelpCenterSite } from '@automattic/data-stores';
-
-type ContactOption = 'chat' | 'email';
-const generateContactOnClickEvent = (
-	contactOption: ContactOption,
-	contactOptionEventName?: string
-): ( () => void ) => {
-	return () => {
-		if ( contactOptionEventName ) {
-			recordTracksEvent( contactOptionEventName, {
-				location: 'help-center',
-				contact_option: contactOption,
-			} );
-		}
-	};
-};
+import { generateContactOnClickEvent } from './utils';
+import './help-center-contact-page.scss';
 
 /**
  * This component is used to render the contact page in the help center.
@@ -63,11 +42,13 @@ type HelpCenterContactPageProps = {
 	hideHeaders?: boolean;
 	onClick?: () => void;
 	trackEventName?: string;
+	isUserEligible?: boolean;
 };
 
 export const HelpCenterContactPage: FC< HelpCenterContactPageProps > = ( {
 	hideHeaders = false,
 	trackEventName,
+	isUserEligible = false,
 } ) => {
 	const { __ } = useI18n();
 	const locale = useLocale();
@@ -79,26 +60,16 @@ export const HelpCenterContactPage: FC< HelpCenterContactPageProps > = ( {
 		isLoading: isLoadingChatStatus,
 		supportActivity,
 	} = useChatStatus();
-	useZendeskMessaging(
+	useLoadZendeskMessaging(
 		'zendesk_support_chat_key',
 		isEligibleForChat || hasActiveChats,
 		isEligibleForChat || hasActiveChats
 	);
 
-	const [ hasSubmittingError, setHasSubmittingError ] = useState< boolean >( false );
-	const sectionName = useSelector( getSectionName );
-	const currentSite = useSelect( ( select ) => {
-		const helpCenterSelect: HelpCenterSelect = select( HELP_CENTER_STORE );
-		return helpCenterSelect.getSite();
-	}, [] );
-
-	const wapuuChatId = useGetOdieStorage( 'chat_id' );
-	const setWapuuChatId = useSetOdieStorage( 'chat_id' );
-
-	const { isOpeningChatWidget, openChatWidget } = useChatWidget(
-		'zendesk_support_chat_key',
-		isEligibleForChat || hasActiveChats
-	);
+	const { sectionName, site } = useHelpCenterContext();
+	const productSlug = ( site as HelpCenterSite )?.plan?.product_slug;
+	const plan = getPlan( productSlug );
+	const productId = plan?.getProductId();
 
 	const isLoading = renderEmail.isLoading || isLoadingChatStatus;
 
@@ -114,22 +85,12 @@ export const HelpCenterContactPage: FC< HelpCenterContactPageProps > = ( {
 		} );
 	}, [ isLoading, renderEmail.render ] );
 
-	const liveChatHeaderText = useMemo( () => {
-		if ( isEnglishLocale || ! hasTranslation( 'Contact WordPress.com Support (English)' ) ) {
-			return __( 'Contact WordPress.com Support', __i18n_text_domain__ );
-		}
-
-		return __( 'Contact WordPress.com Support (English)', __i18n_text_domain__ );
-	}, [ __, locale ] );
-
 	const emailHeaderText = useMemo( () => {
 		if ( isEnglishLocale ) {
 			return __( 'Email', __i18n_text_domain__ );
 		}
 
-		const isLanguageSupported = ( config( 'upwork_support_locales' ) as Array< string > ).includes(
-			locale
-		);
+		const isLanguageSupported = EMAIL_SUPPORT_LOCALES.includes( locale );
 
 		if ( isLanguageSupported ) {
 			const language = getLanguage( locale )?.name;
@@ -147,11 +108,11 @@ export const HelpCenterContactPage: FC< HelpCenterContactPageProps > = ( {
 		}
 
 		return __( 'Email', __i18n_text_domain__ );
-	}, [ __, locale ] );
+	}, [ __, locale, isEnglishLocale ] );
 
 	if ( isLoading ) {
 		return (
-			<div className="help-center-contact-page__loading">
+			<div className="help-center__loading">
 				<Spinner baseClassName="" />
 			</div>
 		);
@@ -166,101 +127,33 @@ export const HelpCenterContactPage: FC< HelpCenterContactPageProps > = ( {
 	} );
 	const emailUrl = `/contact-form?${ emailUrlSearchParams.toString() }`;
 
-	const contactOptionsEventMap: Record< ContactOption, () => void > = {
-		chat: generateContactOnClickEvent( 'chat', trackEventName ),
-		email: generateContactOnClickEvent( 'email', trackEventName ),
-	};
-
-	const renderChatOption = () => {
-		const productSlug = ( currentSite as HelpCenterSite )?.plan?.product_slug;
-		const plan = getPlan( productSlug );
-		const productId = plan?.getProductId();
-
-		const handleOnClick = () => {
-			contactOptionsEventMap.chat();
-
-			recordTracksEvent( 'calypso_inlinehelp_contact_submit', {
-				support_variation: 'messaging',
-				force_site_id: true,
-				location: 'help-center',
-				section: sectionName,
-			} );
-
-			recordTracksEvent( 'calypso_help_live_chat_begin', {
-				site_plan_product_id: productId,
-				is_automated_transfer: currentSite?.is_wpcom_atomic,
-				force_site_id: true,
-				location: 'help-center',
-				section: sectionName,
-			} );
-
-			let message = '';
-			const escapedWapuuChatId = encodeURIComponent( wapuuChatId || '' );
-
-			if ( wapuuChatId ) {
-				message += `Support request started with <strong>Wapuu</strong><br />Wapuu Chat: <a href="https://mc.a8c.com/odie/odie-chat.php?chat_id=${ escapedWapuuChatId }">${ escapedWapuuChatId }</a><br />`;
-			}
-
-			if ( currentSite?.URL ) {
-				message += `Site: ${ encodeURIComponent( currentSite?.URL || '' ) }<br />`;
-			}
-
-			openChatWidget( {
-				aiChatId: escapedWapuuChatId,
-				message: message,
-				siteUrl: currentSite?.URL,
-				onError: () => setHasSubmittingError( true ),
-				// Reset Odie chat after passing to support
-				onSuccess: () => setWapuuChatId( null ),
-			} );
-		};
-
-		return (
-			<div>
-				<button disabled={ isOpeningChatWidget } onClick={ handleOnClick }>
-					<div className="help-center-contact-page__box chat" role="button" tabIndex={ 0 }>
-						<div className="help-center-contact-page__box-icon">
-							<Icon icon={ comment } />
-						</div>
-						<div>
-							<h2>{ liveChatHeaderText }</h2>
-							<p>{ __( 'Our Happiness team will get back to you soon', __i18n_text_domain__ ) }</p>
-						</div>
-					</div>
-				</button>
-				{ hasSubmittingError && (
-					<FormInputValidation
-						isError
-						text={ __( 'Something went wrong, please try again later.', __i18n_text_domain__ ) }
-					/>
-				) }
-			</div>
-		);
-	};
-
 	const renderEmailOption = () => {
 		return (
-			<Link to={ emailUrl } onClick={ contactOptionsEventMap[ 'email' ] }>
-				<div
-					className={ clsx( 'help-center-contact-page__box', 'email' ) }
-					role="button"
-					tabIndex={ 0 }
+			<div className="help-center-contact-support">
+				<Link
+					to={ emailUrl }
+					onClick={ () => generateContactOnClickEvent( 'email', trackEventName, isUserEligible ) }
 				>
-					<div className="help-center-contact-page__box-icon">
-						<Icon icon={ <Mail /> } />
+					<div
+						className={ clsx( 'help-center-contact-support__box', 'email' ) }
+						role="button"
+						tabIndex={ 0 }
+					>
+						<div className="help-center-contact-support__box-icon">
+							<Icon icon={ <Mail /> } />
+						</div>
+						<div>
+							<h2>{ emailHeaderText }</h2>
+							<p>{ __( 'An expert will get back to you soon', __i18n_text_domain__ ) }</p>
+						</div>
 					</div>
-					<div>
-						<h2>{ emailHeaderText }</h2>
-						<p>{ __( 'An expert will get back to you soon', __i18n_text_domain__ ) }</p>
-					</div>
-				</div>
-			</Link>
+				</Link>
+			</div>
 		);
 	};
 
 	return (
 		<div className="help-center-contact-page">
-			{ ! hideHeaders && <BackButton /> }
 			<div className="help-center-contact-page__content">
 				{ ! hideHeaders && (
 					<h3>{ __( 'Contact our WordPress.com experts', __i18n_text_domain__ ) }</h3>
@@ -272,44 +165,142 @@ export const HelpCenterContactPage: FC< HelpCenterContactPageProps > = ( {
 					reopensAt="2024-01-02 07:00Z"
 					enabled={ ! renderEmail.render }
 				/>
-
-				<div className={ clsx( 'help-center-contact-page__boxes' ) }>
-					{ renderEmail.render ? renderEmailOption() : renderChatOption() }
-				</div>
+				{ renderEmail.render
+					? renderEmailOption()
+					: site && (
+							<HelpCenterContactSupportOption
+								sectionName={ sectionName }
+								productId={ productId }
+								site={ site }
+								trackEventName={ trackEventName }
+							/>
+					  ) }
 			</div>
 		</div>
 	);
 };
 
-export const HelpCenterContactButton: FC = () => {
-	const { __ } = useI18n();
+const HelpCenterFooterButton = ( {
+	children,
+	eventName,
+	buttonTextEventProp,
+	redirectTo,
+	icon,
+}: {
+	children: ReactNode;
+	eventName: string;
+	buttonTextEventProp: string;
+	redirectTo: string;
+	icon: ReactElement;
+} ) => {
 	const { url, isLoading } = useStillNeedHelpURL();
-	const sectionName = useSelector( getSectionName );
+	const { sectionName } = useHelpCenterContext();
 	const redirectToWpcom = url === 'https://wordpress.com/help/contact';
-
-	const trackContactButtonClicked = () => {
-		recordTracksEvent( 'calypso_inlinehelp_morehelp_click', {
+	const navigate = useNavigate();
+	const [ isCreatingChat, setIsCreatingChat ] = useState( false );
+	const handleContactButtonClicked = ( {
+		eventName,
+		buttonTextEventProp,
+	}: {
+		eventName: string;
+		buttonTextEventProp: string;
+	} ) => {
+		recordTracksEvent( eventName, {
 			force_site_id: true,
 			location: 'help-center',
 			section: sectionName,
+			button_type: buttonTextEventProp,
 		} );
 	};
 
-	let to = redirectToWpcom ? { pathname: url } : url;
+	const redirectionURL = () => {
+		if ( buttonTextEventProp === 'Still need help?' ) {
+			if ( isLoading ) {
+				return '';
+			}
+			return redirectToWpcom ? { pathname: url } : url;
+		}
+		return redirectTo;
+	};
 
-	if ( isLoading ) {
-		to = '';
-	}
+	const handleClick = async () => {
+		setIsCreatingChat( true );
+		handleContactButtonClicked( {
+			eventName: eventName,
+			buttonTextEventProp: buttonTextEventProp,
+		} );
+
+		setIsCreatingChat( false );
+		const url = redirectionURL();
+		navigate( url );
+	};
 
 	return (
-		<Link
-			to={ to }
-			target={ redirectToWpcom ? '_blank' : '_self' }
-			onClick={ trackContactButtonClicked }
+		<Button
+			onClick={ handleClick }
+			disabled={ isCreatingChat }
 			className="button help-center-contact-page__button"
 		>
-			<Icon icon={ comment } />
-			<span>{ __( 'Still need help?', __i18n_text_domain__ ) }</span>
-		</Link>
+			<Icon icon={ icon } />
+			{ children }
+		</Button>
+	);
+};
+
+export const HelpCenterContactButton: FC = () => {
+	const { shouldUseHelpCenterExperience } = useHelpCenterContext();
+	const { canConnectToZendesk } = useHelpCenterContext();
+	const { __ } = useI18n();
+	const { data: supportInteractionsResolved } = useGetSupportInteractions(
+		'zendesk',
+		100,
+		'resolved',
+		undefined,
+		shouldUseHelpCenterExperience
+	);
+	const { data: supportInteractionsOpen } = useGetSupportInteractions(
+		'zendesk',
+		10,
+		'open',
+		undefined,
+		shouldUseHelpCenterExperience
+	);
+
+	const supportInteractions = [
+		...( supportInteractionsResolved || [] ),
+		...( supportInteractionsOpen || [] ),
+	];
+
+	return shouldUseHelpCenterExperience &&
+		canConnectToZendesk &&
+		supportInteractions &&
+		supportInteractions?.length > 0 ? (
+		<>
+			<HelpCenterFooterButton
+				icon={ comment }
+				eventName="calypso_inlinehelp_morehelp_click"
+				buttonTextEventProp="Still need help?"
+				redirectTo="/odie"
+			>
+				{ __( 'Still need help?', __i18n_text_domain__ ) }
+			</HelpCenterFooterButton>
+			<HelpCenterFooterButton
+				icon={ backup }
+				eventName="calypso_inlinehelp_history_click"
+				buttonTextEventProp="History"
+				redirectTo="/chat-history"
+			>
+				{ __( 'History', __i18n_text_domain__ ) }
+			</HelpCenterFooterButton>
+		</>
+	) : (
+		<HelpCenterFooterButton
+			icon={ comment }
+			eventName="calypso_inlinehelp_morehelp_click"
+			buttonTextEventProp="Still need help?"
+			redirectTo="/odie"
+		>
+			{ __( 'Still need help?', __i18n_text_domain__ ) }
+		</HelpCenterFooterButton>
 	);
 };

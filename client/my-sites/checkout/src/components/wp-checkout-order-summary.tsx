@@ -27,13 +27,10 @@ import { Gridicon } from '@automattic/components';
 import { FormStatus, useFormStatus } from '@automattic/composite-checkout';
 import { formatCurrency } from '@automattic/format-currency';
 import { useHasEnTranslation } from '@automattic/i18n-utils';
-import {
-	isNewsletterOrLinkInBioFlow,
-	isAnyHostingFlow,
-	isSenseiFlow,
-} from '@automattic/onboarding';
+import { isNewsletterOrLinkInBioFlow, isAnyHostingFlow } from '@automattic/onboarding';
 import { useShoppingCart } from '@automattic/shopping-cart';
 import {
+	isBillingInfoEmpty,
 	getTaxBreakdownLineItemsFromCart,
 	getTotalLineItemFromCart,
 	getCreditsLineItemFromCart,
@@ -164,6 +161,24 @@ export function CheckoutSummaryFeaturedList( {
 		</>
 	);
 }
+
+const TaxNotCalculatedLineItemWrapper = styled.div`
+	font-size: 14px;
+	text-wrap: pretty;
+	line-height: 1em;
+`;
+
+function TaxNotCalculatedLineItem() {
+	const translate = useTranslate();
+	return (
+		<TaxNotCalculatedLineItemWrapper>
+			{ translate( 'Tax: to be calculated', {
+				textOnly: true,
+			} ) }
+		</TaxNotCalculatedLineItemWrapper>
+	);
+}
+
 function CheckoutSummaryPriceList() {
 	const cartKey = useCartKey();
 	const { responseCart } = useShoppingCart( cartKey );
@@ -192,6 +207,7 @@ function CheckoutSummaryPriceList() {
 							<span>{ taxLineItem.formattedAmount }</span>
 						</CheckoutSummaryLineItem>
 					) ) }
+					{ isBillingInfoEmpty( responseCart ) && <TaxNotCalculatedLineItem /> }
 					{ creditsLineItem && responseCart.sub_total_integer > 0 && (
 						<CheckoutSummaryLineItem key={ 'checkout-summary-line-item-' + creditsLineItem.id }>
 							<span>{ creditsLineItem.label }</span>
@@ -201,7 +217,12 @@ function CheckoutSummaryPriceList() {
 				</CheckoutSubtotalSection>
 
 				<CheckoutSummaryTotal>
-					<span className="wp-checkout-order-summary__label">{ translate( 'Total' ) }</span>
+					<span className="wp-checkout-order-summary__label">
+						{ translate( 'Total', {
+							context: 'The label of the total line item in checkout',
+							textOnly: true,
+						} ) }
+					</span>
 					<span className="wp-checkout-order-summary__total-price">
 						{ totalLineItem.formattedAmount }
 					</span>
@@ -263,7 +284,7 @@ function CheckoutSummaryFeaturesWrapper( props: {
 	);
 	const shouldUseFlowFeatureList =
 		isNewsletterOrLinkInBioFlow( signupFlowName ) ||
-		( isSenseiFlow( signupFlowName ) && hasSenseiProductInCart ) ||
+		hasSenseiProductInCart ||
 		( isAnyHostingFlow( signupFlowName ) && planHasHostingFeature );
 	const giftSiteSlug = responseCart.gift_details?.receiver_blog_slug;
 
@@ -923,7 +944,7 @@ const CheckoutSummaryFeaturesListItem = styled( 'li' )< { isSupported?: boolean 
 	padding-left: 24px;
 	position: relative;
 	overflow-wrap: break-word;
-	color: ${ ( props ) => ( props.isSupported ? 'inherit' : 'var( --color-neutral-40 )' ) };
+	color: ${ ( props ) => ( props.isSupported ? 'inherit' : props.theme.colors.textColorLight ) };
 
 	.rtl & {
 		padding-right: 24px;
@@ -1019,7 +1040,7 @@ const LoadingCopy = styled.p`
 const SwitchToAnnualPlanButton = styled.button`
 	text-align: left;
 	text-decoration: underline;
-	color: var( --color-link );
+	color: ${ ( props ) => props.theme.colors.primary };
 	cursor: pointer;
 
 	.rtl & {

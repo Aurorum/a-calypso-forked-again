@@ -26,11 +26,8 @@ export type TaskId =
 	| 'setup_free'
 	| 'setup_newsletter'
 	| 'setup_blog'
-	| 'videopress_setup'
 	| 'blog_launched'
 	| 'site_launched'
-	| 'videopress_launched'
-	| 'videopress_upload'
 	| 'design_selected'
 	| 'design_completed'
 	| 'verify_email'
@@ -59,6 +56,7 @@ export interface TaskContext {
 	siteSlug: string | null;
 	submit: NavigationControls[ 'submit' ];
 	displayGlobalStylesWarning: boolean;
+	hasSkippedCheckout: boolean;
 	globalStylesMinimumPlan: string;
 	translatedPlanName?: ReactNode | string;
 	goToStep?: NavigationControls[ 'goToStep' ];

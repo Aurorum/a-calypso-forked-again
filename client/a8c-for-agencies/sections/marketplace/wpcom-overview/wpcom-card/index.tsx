@@ -3,8 +3,8 @@ import { Button, JetpackLogo } from '@automattic/components';
 import formatCurrency from '@automattic/format-currency';
 import { useTranslate } from 'i18n-calypso';
 import { useContext } from 'react';
+import SimpleList from 'calypso/a8c-for-agencies/components/simple-list';
 import { APIProductFamilyProduct } from 'calypso/state/partner-portal/types';
-import SimpleList from '../../common/simple-list';
 import { MarketplaceTypeContext } from '../../context';
 import useWPCOMPlanDescription from './hooks/use-wpcom-plan-description';
 
@@ -82,8 +82,8 @@ export default function WPCOMPlanCard( { plan, quantity, discount, onSelect, isL
 								</>
 							) }
 							<div className="wpcom-plan-card__price-interval">
-								{ plan.price_interval === 'day' && translate( 'USD per day' ) }
-								{ plan.price_interval === 'month' && translate( 'USD per month' ) }
+								{ plan.price_interval === 'day' && translate( 'per day' ) }
+								{ plan.price_interval === 'month' && translate( 'per month' ) }
 							</div>
 						</div>
 					) }

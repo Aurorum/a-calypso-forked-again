@@ -23,6 +23,35 @@ import {
 	FIRST_POSTS_TAB,
 } from './helper';
 
+const DISCOVER_HEADER_NAVIGATION_ITEMS = [];
+
+export const DiscoverHeader = ( props ) => {
+	const translate = useTranslate();
+
+	const { selectedTab } = props;
+	const tabTitle = getSelectedTabTitle( selectedTab );
+	let subHeaderText = translate( 'Explore %s blogs that inspire, educate, and entertain.', {
+		args: [ tabTitle ],
+		comment: '%s is the type of blog being explored e.g. food, art, technology etc.',
+	} );
+	if ( selectedTab === FIRST_POSTS_TAB ) {
+		subHeaderText = translate(
+			'Fresh voices, fresh views. Explore first-time posts from new bloggers.'
+		);
+	}
+
+	return (
+		<NavigationHeader
+			navigationItems={ DISCOVER_HEADER_NAVIGATION_ITEMS }
+			title={ translate( 'Discover' ) }
+			subtitle={ subHeaderText }
+			className={ clsx( 'discover-stream-header', {
+				'reader-dual-column': props.width > WIDE_DISPLAY_CUTOFF,
+			} ) }
+		/>
+	);
+};
+
 const DiscoverStream = ( props ) => {
 	const locale = useLocale();
 	const translate = useTranslate();
@@ -67,50 +96,25 @@ const DiscoverStream = ( props ) => {
 		isLoggedIn
 	);
 	const streamKey = buildDiscoverStreamKey( selectedTab, recommendedStreamTags );
-	const tabTitle = getSelectedTabTitle( selectedTab );
-	let subHeaderText = translate( 'Explore %s blogs that inspire, educate, and entertain.', {
-		args: [ tabTitle ],
-		comment: '%s is the type of blog being explored e.g. food, art, technology etc.',
-	} );
-	if ( selectedTab === FIRST_POSTS_TAB ) {
-		subHeaderText = translate(
-			'Fresh voices, fresh views. Explore first-time posts from new bloggers.'
-		);
-	}
-
-	const DiscoverHeader = () => (
-		<NavigationHeader
-			navigationItems={ [] }
-			title={ translate( 'Discover' ) }
-			subtitle={ subHeaderText }
-			className={ clsx( 'discover-stream-header', {
-				'reader-dual-column': props.width > WIDE_DISPLAY_CUTOFF,
-			} ) }
-		/>
-	);
 
 	const streamSidebar = () => {
 		if ( selectedTab === FIRST_POSTS_TAB && recommendedSites?.length ) {
 			return (
-				<>
-					<h2>{ translate( 'New sites' ) }</h2>
-					<ReaderPopularSitesSidebar
-						items={ recommendedSites }
-						followSource={ READER_DISCOVER_POPULAR_SITES }
-					/>
-				</>
+				<ReaderPopularSitesSidebar
+					items={ recommendedSites }
+					followSource={ READER_DISCOVER_POPULAR_SITES }
+					title={ translate( 'New sites' ) }
+				/>
 			);
 		}
 
 		if ( ( isDefaultTab || selectedTab === 'latest' ) && recommendedSites?.length ) {
 			return (
-				<>
-					<h2>{ translate( 'Popular sites' ) }</h2>
-					<ReaderPopularSitesSidebar
-						items={ recommendedSites }
-						followSource={ READER_DISCOVER_POPULAR_SITES }
-					/>
-				</>
+				<ReaderPopularSitesSidebar
+					items={ recommendedSites }
+					followSource={ READER_DISCOVER_POPULAR_SITES }
+					title={ translate( 'Popular sites' ) }
+				/>
 			);
 		} else if ( ! ( isDefaultTab || selectedTab === 'latest' ) ) {
 			return <ReaderTagSidebar tag={ selectedTab } showFollow />;
@@ -127,16 +131,14 @@ const DiscoverStream = ( props ) => {
 	};
 
 	return (
-		<>
-			<Stream { ...streamProps }>
-				{ DiscoverHeader() }
-				<DiscoverNavigation
-					width={ props.width }
-					selectedTab={ selectedTab }
-					recommendedTags={ interestTags }
-				/>
-			</Stream>
-		</>
+		<Stream { ...streamProps }>
+			<DiscoverHeader selectedTab={ selectedTab } width={ props.width } />
+			<DiscoverNavigation
+				width={ props.width }
+				selectedTab={ selectedTab }
+				recommendedTags={ interestTags }
+			/>
+		</Stream>
 	);
 };
 

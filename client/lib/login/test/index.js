@@ -1,4 +1,4 @@
-import { pathWithLeadingSlash, getSignupUrl } from 'calypso/lib/login';
+import { pathWithLeadingSlash, getSignupUrl, getPluginTitle } from 'calypso/lib/login';
 
 describe( 'pathWithLeadingSlash', () => {
 	test( 'should add leading slash', () => {
@@ -110,7 +110,7 @@ describe( 'getSignupUrl', () => {
 			url: 'https://gravatar.com/',
 		};
 		expect( getSignupUrl( currentQuery, currentRoute, oauth2Client, 'en', '' ) ).toEqual(
-			'/log-in/link?redirect_to=https%3A%2F%2Fpublic-api.wordpress.com%2Foauth2%2Fauthorize%3Fclient_id%3D1854%26response_type%3Dcode%26blog_id%3D0%26state%3D1234%26redirect_uri%3Dhttps%253A%252F%252Fgravatar.com%252Fconnect%252F%253Faction%253Drequest_access_token%26from-calypso%3D1&client_id=1854'
+			'/log-in/link?redirect_to=https%3A%2F%2Fpublic-api.wordpress.com%2Foauth2%2Fauthorize%3Fclient_id%3D1854%26response_type%3Dcode%26blog_id%3D0%26state%3D1234%26redirect_uri%3Dhttps%253A%252F%252Fgravatar.com%252Fconnect%252F%253Faction%253Drequest_access_token%26from-calypso%3D1&client_id=1854&gravatar_from=signup'
 		);
 	} );
 
@@ -212,5 +212,59 @@ describe( 'getSignupUrl', () => {
 		).toEqual(
 			'/start/account?redirect_to=https%3A%2F%2Fpublic-api.wordpress.com%2Fpublic.api%2Fconnect%2F%3Faction%3Dverify'
 		);
+	} );
+} );
+
+describe( 'getPluginTitle', () => {
+	const translate = ( str ) => {
+		return str;
+	};
+	it( 'should return the title for a single valid plugin name', () => {
+		const result = getPluginTitle( 'jetpack-ai', translate );
+		expect( result ).toBe( 'Jetpack' );
+	} );
+
+	it( 'should return titles joined with "and" for two plugin names', () => {
+		const result = getPluginTitle( 'jetpack-ai,woocommerce-payments', translate );
+		expect( result ).toBe( 'Jetpack and WooPayments' );
+	} );
+
+	it( 'should return titles joined with a serial comma and "and" for three plugin names', () => {
+		const result = getPluginTitle( 'jetpack-ai,woocommerce-payments,order-attribution', translate );
+		expect( result ).toBe( 'Jetpack, WooPayments, and Order Attribution' );
+	} );
+
+	it( 'should return the default title for an invalid plugin name', () => {
+		const result = getPluginTitle( 'unknown-plugin', translate );
+		expect( result ).toBe( 'Jetpack, WooPayments, and Order Attribution' ); // Default value
+	} );
+
+	it( 'should return the default title for null input', () => {
+		const result = getPluginTitle( null, translate );
+		expect( result ).toBe( 'Jetpack, WooPayments, and Order Attribution' ); // Default value
+	} );
+
+	it( 'should return the default title for an empty string', () => {
+		const result = getPluginTitle( '', translate );
+		expect( result ).toBe( 'Jetpack, WooPayments, and Order Attribution' ); // Default value
+	} );
+
+	it( 'should handle a mix of valid and invalid plugin names', () => {
+		const result = getPluginTitle( 'jetpack-ai,unknown-plugin,woocommerce-payments', translate );
+		expect( result ).toBe( 'Jetpack and WooPayments' ); // Default for invalid names
+	} );
+
+	it( 'should handle extra whitespace in plugin names', () => {
+		const result = getPluginTitle( ' jetpack-ai ,, woocommerce-payments ', translate );
+		expect( result ).toBe( 'Jetpack and WooPayments' );
+	} );
+
+	it( 'should handle French formatting for three plugin names', () => {
+		const result = getPluginTitle(
+			'jetpack-ai,woocommerce-payments,order-attribution',
+			translate,
+			'fr'
+		);
+		expect( result ).toBe( 'Jetpack, WooPayments et Order Attribution' );
 	} );
 } );

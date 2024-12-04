@@ -1,18 +1,10 @@
 import { useCallback, useMemo, useState } from 'react';
+import { areURLsUnique, isValidUrl } from 'calypso/a8c-for-agencies/components/form/utils';
 import { AgencyDirectoryApplication, DirectoryApplicationType } from '../../types';
 
 type Props = {
 	initialFormData?: AgencyDirectoryApplication | null;
 };
-
-function validateURL( url: string ) {
-	return /^(https?:\/\/)?([a-z0-9-]+\.)*[a-z0-9-]+\.[a-z]+(:[0-9]+)?(\/[a-z0-9-]*)*$/.test( url );
-}
-
-function areURLsUnique( urls: string[] ) {
-	const urlSet = new Set( urls );
-	return urlSet.size === urls.length;
-}
 
 export default function useExpertiseForm( { initialFormData }: Props ) {
 	const [ formData, setFormData ] = useState< AgencyDirectoryApplication >(
@@ -100,8 +92,11 @@ export default function useExpertiseForm( { initialFormData }: Props ) {
 			formData.directories.length > 0 &&
 			formData.feedbackUrl.length > 0 &&
 			// Ensure that each directory request has 5 valid URLs
-			formData.directories.every( ( { urls } ) => {
-				return urls.every( ( url ) => url && validateURL( url ) ) && areURLsUnique( urls );
+			formData.directories.every( ( { status, urls } ) => {
+				return (
+					status === 'approved' ||
+					( urls.every( ( url ) => url && isValidUrl( url ) ) && areURLsUnique( urls ) )
+				);
 			} ),
 		[ formData ]
 	);

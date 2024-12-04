@@ -1,4 +1,5 @@
 import page from '@automattic/calypso-router';
+import { useTranslate } from 'i18n-calypso';
 import { PropsWithChildren, useContext, useCallback } from 'react';
 import CSSTransition from 'react-transition-group/CSSTransition';
 import TransitionGroup from 'react-transition-group/TransitionGroup';
@@ -34,6 +35,7 @@ const LicenseTransition = ( props: PropsWithChildren< LicenseTransitionProps > )
 );
 
 export default function LicenseList() {
+	const translate = useTranslate();
 	const dispatch = useDispatch();
 	const { filter, search, sortField, sortDirection, currentPage } =
 		useContext( LicensesOverviewContext );
@@ -64,6 +66,11 @@ export default function LicenseList() {
 		[ dispatch ]
 	);
 
+	const getProductName = ( name: string ): string => {
+		// For WordPress plans, we don't want to mention the specific plan.
+		return name.startsWith( 'WordPress.com' ) ? translate( 'WordPress.com Site' ) : name;
+	};
+
 	return (
 		<div className="license-list">
 			<TransitionGroup className="license-list__transition-group">
@@ -77,15 +84,8 @@ export default function LicenseList() {
 					licenses.map( ( license ) => (
 						<LicenseTransition key={ license.licenseKey }>
 							<LicensePreview
-								parentLicenseId={ license.licenseId }
-								licenseKey={ license.licenseKey }
-								product={ license.product }
-								blogId={ license.blogId }
-								siteUrl={ license.siteUrl }
-								hasDownloads={ license.hasDownloads }
-								issuedAt={ license.issuedAt }
-								attachedAt={ license.attachedAt }
-								revokedAt={ license.revokedAt }
+								license={ license }
+								productName={ getProductName( license.product ) }
 								licenseType={
 									license.ownerType === LicenseType.Standard
 										? LicenseType.Standard
@@ -93,6 +93,7 @@ export default function LicenseList() {
 								}
 								quantity={ license.quantity }
 								isChildLicense={ !! license.parentLicenseId }
+								meta={ license.meta }
 								referral={ license.referral }
 							/>
 						</LicenseTransition>

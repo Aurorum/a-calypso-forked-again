@@ -1,11 +1,19 @@
+import { isEnabled } from '@automattic/calypso-config';
 import { type Callback } from '@automattic/calypso-router';
 import page from '@automattic/calypso-router';
 import PageViewTracker from 'calypso/a8c-for-agencies/components/a4a-page-view-tracker';
-import { A4A_MARKETPLACE_HOSTING_LINK } from 'calypso/a8c-for-agencies/components/sidebar-menu/lib/constants';
+import {
+	A4A_MARKETPLACE_HOSTING_LINK,
+	A4A_MARKETPLACE_HOSTING_PRESSABLE_LINK,
+	A4A_MARKETPLACE_HOSTING_WPCOM_LINK,
+} from 'calypso/a8c-for-agencies/components/sidebar-menu/lib/constants';
+import { getActiveAgency } from 'calypso/state/a8c-for-agencies/agency/selectors';
 import MarketplaceSidebar from '../../components/sidebar-menu/marketplace';
 import AssignLicense from './assign-license';
 import Checkout from './checkout';
+import { MARKETPLACE_TYPE_REFERRAL } from './hoc/with-marketplace-type';
 import HostingOverview from './hosting-overview';
+import { getValidHostingSection } from './lib/hosting';
 import { getValidBrand } from './lib/product-brand';
 import PressableOverview from './pressable-overview';
 import DownloadProducts from './primary/download-products';
@@ -17,7 +25,7 @@ export const marketplaceContext: Callback = () => {
 };
 
 export const marketplaceProductsContext: Callback = ( context, next ) => {
-	const { site_id, product_slug, purchase_type } = context.query;
+	const { site_id, product_slug, purchase_type, search_query } = context.query;
 	const productBrand = context.params.brand;
 
 	context.secondary = <MarketplaceSidebar path={ context.path } />;
@@ -30,6 +38,7 @@ export const marketplaceProductsContext: Callback = ( context, next ) => {
 				suggestedProduct={ product_slug }
 				defaultMarketplaceType={ purchaseType }
 				productBrand={ getValidBrand( productBrand ) }
+				searchQuery={ search_query }
 			/>
 		</>
 	);
@@ -37,14 +46,27 @@ export const marketplaceProductsContext: Callback = ( context, next ) => {
 };
 
 export const marketplaceHostingContext: Callback = ( context, next ) => {
+	if ( isEnabled( 'a4a-hosting-page-redesign' ) && ! context.params.section ) {
+		const currentAgency = getActiveAgency( context.store.getState() );
+		page.redirect(
+			// If the agency is managing less than 5 sites, then we make wpcom as default section.
+			currentAgency?.signup_meta?.number_sites === '1-5'
+				? A4A_MARKETPLACE_HOSTING_WPCOM_LINK
+				: A4A_MARKETPLACE_HOSTING_PRESSABLE_LINK
+		);
+		return;
+	}
+
 	const { purchase_type } = context.query;
 	const purchaseType = purchase_type === 'referral' ? 'referral' : undefined;
+
+	const section = getValidHostingSection( context.params.section );
 
 	context.secondary = <MarketplaceSidebar path={ context.path } />;
 	context.primary = (
 		<>
 			<PageViewTracker title="Marketplace > Hosting" path={ context.path } />
-			<HostingOverview defaultMarketplaceType={ purchaseType } />
+			<HostingOverview defaultMarketplaceType={ purchaseType } section={ section } />
 		</>
 	);
 	next();
@@ -75,11 +97,17 @@ export const marketplaceWpcomContext: Callback = ( context, next ) => {
 };
 
 export const checkoutContext: Callback = ( context, next ) => {
+	const { referral_blog_id } = context.query;
+	const referralBlogId = referral_blog_id ? parseInt( referral_blog_id ) : undefined;
+
 	context.secondary = <MarketplaceSidebar path={ context.path } />;
 	context.primary = (
 		<>
 			<PageViewTracker title="Marketplace > Checkout" path={ context.path } />
-			<Checkout />
+			<Checkout
+				referralBlogId={ referralBlogId }
+				defaultMarketplaceType={ referralBlogId ? MARKETPLACE_TYPE_REFERRAL : undefined }
+			/>
 		</>
 	);
 	next();

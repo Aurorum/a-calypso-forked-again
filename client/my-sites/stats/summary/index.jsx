@@ -11,16 +11,21 @@ import JetpackColophon from 'calypso/components/jetpack-colophon';
 import Main from 'calypso/components/main';
 import NavigationHeader from 'calypso/components/navigation-header';
 import AnnualSiteStats from 'calypso/my-sites/stats/annual-site-stats';
+import StatsModuleAuthors from 'calypso/my-sites/stats/features/modules/stats-authors';
+import StatsModuleClicks from 'calypso/my-sites/stats/features/modules/stats-clicks';
+import StatsModuleCountries from 'calypso/my-sites/stats/features/modules/stats-countries';
+import StatsModuleDownloads from 'calypso/my-sites/stats/features/modules/stats-downloads';
+import StatsModuleReferrers from 'calypso/my-sites/stats/features/modules/stats-referrers';
+import StatsModuleSearch from 'calypso/my-sites/stats/features/modules/stats-search';
+import StatsModuleTopPosts from 'calypso/my-sites/stats/features/modules/stats-top-posts';
 import getMediaItem from 'calypso/state/selectors/get-media-item';
 import getEnvStatsFeatureSupportChecks from 'calypso/state/sites/selectors/get-env-stats-feature-supports';
 import { getUpsellModalView } from 'calypso/state/stats/paid-stats-upsell/selectors';
 import { getSelectedSiteId, getSelectedSiteSlug } from 'calypso/state/ui/selectors';
+import StatsModuleUTM from '../features/modules/stats-utm';
 import { StatsGlobalValuesContext } from '../pages/providers/global-provider';
-import Countries from '../stats-countries';
 import DownloadCsv from '../stats-download-csv';
-import StatsModule from '../stats-module';
 import AllTimeNav from '../stats-module/all-time-nav';
-import StatsModuleUTM from '../stats-module-utm';
 import PageViewTracker from '../stats-page-view-tracker';
 import statsStringsFactory from '../stats-strings';
 import StatsUpsellModal from '../stats-upsell-modal';
@@ -83,6 +88,15 @@ class StatsSummary extends Component {
 			date: endOf.format( 'YYYY-MM-DD' ),
 			max: 0,
 		};
+
+		// Update query with date range if it provided.
+		const dateRange = this.props.dateRange;
+		if ( dateRange ) {
+			query.start_date = dateRange.startDate.format( 'YYYY-MM-DD' );
+			query.date = dateRange.endDate.format( 'YYYY-MM-DD' );
+			query.summarize = 1;
+		}
+
 		const moduleQuery = merge( {}, statsQueryOptions, query );
 		const urlParams = new URLSearchParams( this.props.context.querystring );
 		const listItemClassName = 'stats__summary--narrow-mobile';
@@ -96,12 +110,10 @@ class StatsSummary extends Component {
 				summaryView = (
 					<Fragment key="referrers-summary">
 						{ this.renderSummaryHeader( path, statType, false, moduleQuery ) }
-						<StatsModule
-							path={ path }
+						<StatsModuleReferrers
 							moduleStrings={ StatsStrings.referrers }
 							period={ this.props.period }
 							query={ moduleQuery }
-							statType={ statType }
 							summary
 							listItemClassName={ listItemClassName }
 						/>
@@ -117,12 +129,10 @@ class StatsSummary extends Component {
 				summaryView = (
 					<Fragment key="clicks-summary">
 						{ this.renderSummaryHeader( path, statType, false, moduleQuery ) }
-						<StatsModule
-							path={ path }
+						<StatsModuleClicks
 							moduleStrings={ StatsStrings.clicks }
 							period={ this.props.period }
 							query={ moduleQuery }
-							statType={ statType }
 							summary
 							listItemClassName={ listItemClassName }
 						/>
@@ -138,8 +148,8 @@ class StatsSummary extends Component {
 				summaryView = (
 					<Fragment key="countries-summary">
 						{ this.renderSummaryHeader( path, statType, false, moduleQuery ) }
-						<Countries
-							path={ path }
+						<StatsModuleCountries
+							moduleStrings={ StatsStrings.countries }
 							period={ this.props.period }
 							query={ moduleQuery }
 							summary
@@ -172,12 +182,10 @@ class StatsSummary extends Component {
 				summaryView = (
 					<Fragment key="posts-summary">
 						{ this.renderSummaryHeader( path, statType, false, moduleQuery ) }
-						<StatsModule
-							path={ path }
+						<StatsModuleTopPosts
 							moduleStrings={ StatsStrings.posts }
 							period={ this.props.period }
 							query={ moduleQuery }
-							statType={ statType }
 							summary
 							listItemClassName={ listItemClassName }
 						/>
@@ -195,12 +203,10 @@ class StatsSummary extends Component {
 				summaryView = (
 					<Fragment key="authors-summary">
 						{ this.renderSummaryHeader( path, statType, true, query ) }
-						<StatsModule
-							path={ path }
+						<StatsModuleAuthors
 							moduleStrings={ StatsStrings.authors }
 							period={ this.props.period }
 							query={ query }
-							statType={ statType }
 							className="stats__author-views"
 							summary
 							listItemClassName={ listItemClassName }
@@ -240,12 +246,10 @@ class StatsSummary extends Component {
 				summaryView = (
 					<Fragment key="filedownloads-summary">
 						{ this.renderSummaryHeader( path, statType, true, query ) }
-						<StatsModule
-							path={ path }
+						<StatsModuleDownloads
 							moduleStrings={ StatsStrings.filedownloads }
 							period={ this.props.period }
 							query={ query }
-							statType={ statType }
 							summary
 							listItemClassName={ listItemClassName }
 						/>
@@ -302,12 +306,10 @@ class StatsSummary extends Component {
 				summaryView = (
 					<Fragment key="search-terms-summary">
 						{ this.renderSummaryHeader( path, statType, false, moduleQuery ) }
-						<StatsModule
-							path={ path }
+						<StatsModuleSearch
 							moduleStrings={ StatsStrings.search }
 							period={ this.props.period }
 							query={ moduleQuery }
-							statType={ statType }
 							summary
 							listItemClassName={ listItemClassName }
 						/>

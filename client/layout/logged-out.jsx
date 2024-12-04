@@ -5,6 +5,7 @@ import { UniversalNavbarHeader, UniversalNavbarFooter } from '@automattic/wpcom-
 import clsx from 'clsx';
 import { localize } from 'i18n-calypso';
 import PropTypes from 'prop-types';
+import { useEffect } from 'react';
 import { connect, useSelector } from 'react-redux';
 import { CookieBannerContainerSSR } from 'calypso/blocks/cookie-banner';
 import ReaderJoinConversationDialog from 'calypso/blocks/reader-join-conversation/dialog';
@@ -32,7 +33,7 @@ import { createAccountUrl } from 'calypso/lib/paths';
 import isReaderTagEmbedPage from 'calypso/lib/reader/is-reader-tag-embed-page';
 import { getOnboardingUrl as getPatternLibraryOnboardingUrl } from 'calypso/my-sites/patterns/paths';
 import { isUserLoggedIn } from 'calypso/state/current-user/selectors';
-import { getRedirectToOriginal, isTwoFactorEnabled } from 'calypso/state/login/selectors';
+import { isTwoFactorEnabled } from 'calypso/state/login/selectors';
 import { isPartnerSignupQuery } from 'calypso/state/login/utils';
 import {
 	getCurrentOAuth2Client,
@@ -45,9 +46,10 @@ import getInitialQueryArguments from 'calypso/state/selectors/get-initial-query-
 import getIsBlazePro from 'calypso/state/selectors/get-is-blaze-pro';
 import getIsWooPasswordless from 'calypso/state/selectors/get-is-woo-passwordless';
 import getWccomFrom from 'calypso/state/selectors/get-wccom-from';
-import isWooCommerceCoreProfilerFlow from 'calypso/state/selectors/is-woocommerce-core-profiler-flow';
+import isWooPasswordlessJPCFlow from 'calypso/state/selectors/is-woo-passwordless-jpc-flow';
 import { masterbarIsVisible } from 'calypso/state/ui/selectors';
 import BodySectionCssClass from './body-section-css-class';
+import { refreshColorScheme, getColorSchemeFromCurrentQuery } from './color-scheme';
 
 import './style.scss';
 
@@ -74,13 +76,14 @@ const LayoutLoggedOut = ( {
 	showGdprBanner,
 	isPartnerSignup,
 	isPartnerSignupStart,
-	isWooCoreProfilerFlow,
+	isWooPasswordlessJPC,
 	isWooPasswordless,
 	isBlazePro,
 	locale,
 	twoFactorEnabled,
 	/* eslint-disable no-shadow */
 	clearLastActionRequiresLogin,
+	colorScheme,
 } ) => {
 	const localizeUrl = useLocalizeUrl();
 	const isLoggedIn = useSelector( isUserLoggedIn );
@@ -98,7 +101,9 @@ const LayoutLoggedOut = ( {
 	const isJetpackThankYou =
 		sectionName === 'checkout' && currentRoute.startsWith( '/checkout/jetpack/thank-you' );
 
-	const isReaderTagPage = sectionName === 'reader' && pathNameWithoutLocale.startsWith( '/tag/' );
+	const isReaderTagPage =
+		sectionName === 'reader' &&
+		( pathNameWithoutLocale.startsWith( '/tag/' ) || pathNameWithoutLocale.startsWith( '/tags' ) );
 	const isReaderTagEmbed = typeof window !== 'undefined' && isReaderTagEmbedPage( window.location );
 
 	const isReaderDiscoverPage =
@@ -107,21 +112,16 @@ const LayoutLoggedOut = ( {
 	const isReaderSearchPage =
 		sectionName === 'reader' && pathNameWithoutLocale.startsWith( '/read/search' );
 
-	// It's used to add a class name for the login and magic login of Gravatar powered clients only (not for F2A pages)
-	const isGravPoweredLoginPage =
-		isGravPoweredClient &&
-		! currentRoute.startsWith( '/log-in/push' ) &&
-		! currentRoute.startsWith( '/log-in/authenticator' ) &&
-		! currentRoute.startsWith( '/log-in/sms' ) &&
-		! currentRoute.startsWith( '/log-in/webauthn' ) &&
-		! currentRoute.startsWith( '/log-in/backup' );
+	// It's used to add a class name for the login-related pages, except for `/log-in/link/use`.
+	const hasGravPoweredClientClass =
+		isGravPoweredClient && ! currentRoute.startsWith( '/log-in/link/use' );
 
 	const isMagicLogin = currentRoute && currentRoute.startsWith( '/log-in/link' );
 
 	const isWpcomMagicLogin =
 		isMagicLogin &&
 		! isJetpackLogin &&
-		! isGravPoweredLoginPage &&
+		! hasGravPoweredClientClass &&
 		! isJetpackCloudOAuth2Client( oauth2Client ) &&
 		! isA4AOAuth2Client( oauth2Client ) &&
 		! isWooOAuth2Client( oauth2Client );
@@ -142,17 +142,24 @@ const LayoutLoggedOut = ( {
 		'is-p2-login': isP2Login,
 		'is-gravatar': isGravatar,
 		'is-wp-job-manager': isWPJobManager,
-		'is-grav-powered-client': isGravPoweredClient,
-		'is-grav-powered-login-page': isGravPoweredLoginPage,
-		'is-woocommerce-core-profiler-flow': isWooCoreProfilerFlow,
+		'is-grav-powered-client': hasGravPoweredClientClass,
+		'is-woocommerce-core-profiler-flow': isWooPasswordlessJPC,
 		'is-magic-login': isMagicLogin,
 		'is-wpcom-magic-login': isWpcomMagicLogin,
 		'is-woo-passwordless': isWooPasswordless,
 		'is-blaze-pro': isBlazePro,
 		'two-factor-auth-enabled': twoFactorEnabled,
+		'feature-flag-woocommerce-core-profiler-passwordless-auth': config.isEnabled(
+			'woocommerce/core-profiler-passwordless-auth'
+		),
+		'feature-flag-woocommerce-rebrand-2-0': config.isEnabled( 'woocommerce/rebrand-2-0' ),
 	};
 
 	let masterbar = null;
+
+	useEffect( () => {
+		isWooPasswordlessJPC && refreshColorScheme( 'default', colorScheme );
+	}, [] ); // Empty dependency array ensures it runs only once on mount
 
 	// Open new window to create account page when a logged in action was triggered on the Reader tag embed page and the user is not logged in
 	if ( ! isLoggedIn && loggedInAction && isReaderTagEmbed ) {
@@ -160,15 +167,15 @@ const LayoutLoggedOut = ( {
 		window.open( createAccountUrl( { redirectTo: pathname, ref: 'reader-lp' } ), '_blank' );
 	}
 
-	// Uses custom styles for DOPS clients and WooCommerce - which are the only ones with a name property defined
-	if ( useOAuth2Layout && oauth2Client && oauth2Client.name ) {
+	if ( useOAuth2Layout && ( isGravatar || isGravPoweredClient ) ) {
+		masterbar = null;
+	} else if ( useOAuth2Layout && oauth2Client && oauth2Client.name ) {
+		// Uses custom styles for DOPS clients and WooCommerce - which are the only ones with a name property defined
 		if ( isPartnerSignup && ! isPartnerSignupStart ) {
 			// Using localizeUrl directly to sidestep issue with useLocale use in SSR
 			masterbar = (
 				<MasterbarLogin goBackUrl={ localizeUrl( 'https://wordpress.com/partners/', locale ) } />
 			);
-		} else if ( isGravatar || isGravPoweredClient ) {
-			masterbar = null;
 		} else {
 			classes.dops = true;
 			classes[ oauth2Client.name ] = true;
@@ -190,26 +197,23 @@ const LayoutLoggedOut = ( {
 	} else if (
 		[
 			'patterns',
+			'performance-profiler',
 			'plugins',
 			'reader',
 			'site-profiler',
 			'subscriptions',
 			'theme',
 			'themes',
-			'start-with',
 		].includes( sectionName ) &&
 		! isReaderTagPage &&
 		! isReaderSearchPage &&
 		! isReaderDiscoverPage
 	) {
 		const nonMonochromeSections = [ 'plugins' ];
-		const whiteNavbarSections = [ 'start-with' ];
 
 		const className = clsx( {
 			'is-style-monochrome':
 				isEnabled( 'site-profiler/metrics' ) && ! nonMonochromeSections.includes( sectionName ),
-			'is-style-white':
-				isEnabled( 'start-with/square-payments' ) && whiteNavbarSections.includes( sectionName ),
 		} );
 
 		masterbar = (
@@ -221,17 +225,13 @@ const LayoutLoggedOut = ( {
 					! nonMonochromeSections.includes( sectionName ) && {
 						logoColor: 'white',
 					} ) }
-				{ ...( isEnabled( 'start-with/square-payments' ) &&
-					whiteNavbarSections.includes( sectionName ) && {
-						logoColor: 'black',
-					} ) }
 				{ ...( sectionName === 'subscriptions' && { variant: 'minimal' } ) }
 				{ ...( sectionName === 'patterns' && {
 					startUrl: getPatternLibraryOnboardingUrl( locale, isLoggedIn ),
 				} ) }
 			/>
 		);
-	} else if ( isWooCoreProfilerFlow ) {
+	} else if ( isWooPasswordlessJPC ) {
 		classes.woo = true;
 		classes[ 'has-no-masterbar' ] = false;
 		masterbar = (
@@ -341,15 +341,8 @@ export default withCurrentRoute(
 			const oauth2Client = getCurrentOAuth2Client( state );
 			const isGravatar = isGravatarOAuth2Client( oauth2Client );
 			const isWPJobManager = isWPJobManagerOAuth2Client( oauth2Client );
-			const redirectToOriginal = getRedirectToOriginal( state ) || '';
 			const isBlazePro = getIsBlazePro( state );
-			const clientId = new URLSearchParams( redirectToOriginal.split( '?' )[ 1 ] ).get(
-				'client_id'
-			);
-			const isGravPoweredClient =
-				isGravPoweredOAuth2Client( oauth2Client ) ||
-				// To cover the case of a login URL without the "client_id" parameter, e.g. /log-in/link/use
-				isGravPoweredOAuth2Client( { id: Number( clientId ) } );
+			const isGravPoweredClient = isGravPoweredOAuth2Client( oauth2Client );
 			const isReskinLoginRoute =
 				currentRoute.startsWith( '/log-in' ) &&
 				! isJetpackLogin &&
@@ -372,7 +365,7 @@ export default withCurrentRoute(
 				! isBlazeProOAuth2Client( oauth2Client ) &&
 				[ 'signup', 'jetpack-connect' ].includes( sectionName );
 			const isJetpackWooCommerceFlow = 'woocommerce-onboarding' === currentQuery?.from;
-			const isWooCoreProfilerFlow = isWooCommerceCoreProfilerFlow( state );
+			const isWooPasswordlessJPC = isWooPasswordlessJPCFlow( state );
 			const wccomFrom = getWccomFrom( state );
 			const masterbarIsHidden =
 				! ( currentSection || currentRoute ) ||
@@ -380,6 +373,10 @@ export default withCurrentRoute(
 				noMasterbarForSection ||
 				noMasterbarForRoute;
 			const twoFactorEnabled = isTwoFactorEnabled( state );
+
+			const colorScheme = isWooPasswordlessJPC
+				? getColorSchemeFromCurrentQuery( currentQuery )
+				: null;
 
 			return {
 				isJetpackLogin,
@@ -400,10 +397,11 @@ export default withCurrentRoute(
 				useOAuth2Layout: showOAuth2Layout( state ),
 				isPartnerSignup,
 				isPartnerSignupStart,
-				isWooCoreProfilerFlow,
+				isWooPasswordlessJPC,
 				isWooPasswordless: getIsWooPasswordless( state ),
 				isBlazePro: getIsBlazePro( state ),
 				twoFactorEnabled,
+				colorScheme,
 			};
 		},
 		{ clearLastActionRequiresLogin }

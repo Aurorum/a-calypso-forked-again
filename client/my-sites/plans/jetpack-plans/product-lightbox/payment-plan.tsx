@@ -32,9 +32,14 @@ const PaymentPlan: React.FC< PaymentPlanProps > = ( {
 	const translate = useTranslate();
 	const { containerRef, isCompact } = useItemPriceCompact();
 
-	const { originalPrice, discountedPrice, discountedPriceDuration, isFetching, priceTierList } =
-		useItemPrice( siteId, product, product?.monthlyProductSlug || '' );
-
+	const {
+		originalPrice,
+		discountedPrice,
+		discountedPriceDuration,
+		isFetching,
+		priceTierList,
+		saleCouponDiscount,
+	} = useItemPrice( siteId, product, product?.monthlyProductSlug || '' );
 	const currentTier =
 		quantity &&
 		priceTierList.find( ( tier ) => {
@@ -45,7 +50,20 @@ const PaymentPlan: React.FC< PaymentPlanProps > = ( {
 			return quantity >= tier.minimum_units;
 		} );
 
-	const currentTierPrice = currentTier && currentTier.minimum_price / 100 / 12;
+	const getCurrentTierPrice = () => {
+		const originalCurrentTierPrice = currentTier && currentTier.minimum_price / 100 / 12;
+		let currentTierPrice = originalCurrentTierPrice;
+		if ( saleCouponDiscount && currentTierPrice ) {
+			currentTierPrice = currentTierPrice * ( 1 - saleCouponDiscount );
+		}
+
+		return {
+			originalCurrentTierPrice,
+			currentTierPrice,
+		};
+	};
+
+	const { originalCurrentTierPrice, currentTierPrice } = getCurrentTierPrice();
 	const currentPrice = isNumber( discountedPrice ) ? discountedPrice : originalPrice;
 	const currencyCode = useSelector( getCurrentUserCurrencyCode ) || 'USD';
 
@@ -78,7 +96,7 @@ const PaymentPlan: React.FC< PaymentPlanProps > = ( {
 		return 1 === discountedPriceDuration
 			? translate( '%(percentOff)d%% off the first month', translateArgs )
 			: translate( '%(percentOff)d%% off the first year', translateArgs );
-	}, [ discountedPrice, product?.productSlug, originalPrice, discountedPriceDuration, translate ] );
+	}, [ discountedPrice, product?.productSlug, discountedPriceDuration, translate, originalPrice ] );
 
 	return (
 		<div className="product-lightbox__variants-plan">
@@ -108,6 +126,7 @@ const PaymentPlan: React.FC< PaymentPlanProps > = ( {
 									'is-compact': isCompact,
 								} ) }
 							>
+								{ /* discountPercentage is omitted as we are showing that below the timeframe in this context */ }
 								<TimeFrame
 									billingTerm={ billingTerm }
 									discountedPriceDuration={ discountedPriceDuration }
@@ -122,7 +141,11 @@ const PaymentPlan: React.FC< PaymentPlanProps > = ( {
 						{ isNumber( discountedPrice ) && (
 							<div className={ labelClass }>
 								<span className="product-lightbox__variants-plan-card-old-price">
-									<PlanPrice original rawPrice={ originalPrice } currencyCode={ currencyCode } />
+									<PlanPrice
+										original
+										rawPrice={ currentTier ? originalCurrentTierPrice : originalPrice }
+										currencyCode={ currencyCode }
+									/>
 								</span>
 								{ getDiscountedLabel() }
 							</div>

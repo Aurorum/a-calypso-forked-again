@@ -31,8 +31,6 @@ import {
 	type WPCOM_SPACE_UPGRADE_PRODUCTS,
 	type WPCOM_OTHER_PRODUCTS,
 	type JETPACK_ALIAS_LIST,
-	FEATURE_50GB_STORAGE_ADD_ON,
-	FEATURE_100GB_STORAGE_ADD_ON,
 	FEATURE_GROUP_WEBSITE_BUILDING,
 	FEATURE_GROUP_MANAGED_WP_HOSTING,
 	FEATURE_GROUP_ECOMMERCE,
@@ -47,6 +45,16 @@ import {
 	FEATURE_200GB_STORAGE,
 	FEATURE_P2_13GB_STORAGE,
 	FEATURE_P2_3GB_STORAGE,
+	FEATURE_GROUP_DOMAIN,
+	FEATURE_GROUP_THEMES,
+	FEATURE_GROUP_PERFORMANCE,
+	FEATURE_GROUP_ENTITIES,
+	FEATURE_GROUP_ADS,
+	FEATURE_GROUP_ANALYTICS,
+	FEATURE_GROUP_WOO,
+	FEATURE_GROUP_CUSTOMIZE_STYLE,
+	FEATURE_GROUP_CUSTOM_PLUGINS,
+	FEATURE_GROUP_DEV_TOOLS,
 } from './constants';
 import { PriceTierEntry } from './get-price-tier-for-units';
 import type { TranslateResult } from 'i18n-calypso';
@@ -78,18 +86,6 @@ export type FeatureList = {
 /**
  * WPCOM
  */
-
-/**
- * !WARNING! The following type is suspicious, how there is a reference to an Add-On slug that
- * links to a defined feature slug. Add-Ons have been defined to refer internally to a set of
- * features via their `featuresSlugs` prop. So `WPCOM_STORAGE_ADD_ONS` being a list of feature slugs
- * used to individually refer to actual Add-Ons is likely a mistake.
- */
-const WPCOM_STORAGE_ADD_ONS = < const >[
-	FEATURE_50GB_STORAGE_ADD_ON,
-	FEATURE_100GB_STORAGE_ADD_ON,
-];
-
 const WPCOM_PLAN_STORAGE_FEATURES = < const >[
 	FEATURE_1GB_STORAGE,
 	FEATURE_3GB_STORAGE,
@@ -105,7 +101,7 @@ export type WPComProductSlug = ( typeof WPCOM_PRODUCTS )[ number ];
 export type WPComPlanSlug = ( typeof WPCOM_PLANS )[ number ];
 export type WPComPlanStorageFeatureSlug = ( typeof WPCOM_PLAN_STORAGE_FEATURES )[ number ];
 export type WPComPurchasableItemSlug = WPComProductSlug | WPComPlanSlug;
-export type WPComStorageAddOnSlug = ( typeof WPCOM_STORAGE_ADD_ONS )[ number ];
+
 // WPCOM Space Upgrade Products
 // - Special products that do not yet map to the exported `PRODUCTS_LIST` in @automattic/calypso-products
 export type WPComSpaceUpgradeProductSlug = ( typeof WPCOM_SPACE_UPGRADE_PRODUCTS )[ number ];
@@ -146,6 +142,7 @@ export interface WPComPlan extends Plan {
 	get2023PricingGridSignupWpcomFeatures?: () => Feature[];
 	getHostingSignupFeatures?: ( term?: Product[ 'term' ] ) => () => Feature[];
 	getHostingHighlightedFeatures?: () => Feature[];
+	getCancellationFeatures?: () => Feature[];
 }
 
 export type IncompleteWPcomPlan = Partial< WPComPlan > &
@@ -261,7 +258,17 @@ export type FeatureGroupSlug =
 	| typeof FEATURE_GROUP_MARKETING_EMAIL
 	| typeof FEATURE_GROUP_SHIPPING
 	| typeof FEATURE_GROUP_STORAGE
-	| typeof FEATURE_GROUP_ALL_FEATURES;
+	| typeof FEATURE_GROUP_ALL_FEATURES
+	| typeof FEATURE_GROUP_ADS
+	| typeof FEATURE_GROUP_ANALYTICS
+	| typeof FEATURE_GROUP_CUSTOMIZE_STYLE
+	| typeof FEATURE_GROUP_DOMAIN
+	| typeof FEATURE_GROUP_ENTITIES
+	| typeof FEATURE_GROUP_PERFORMANCE
+	| typeof FEATURE_GROUP_THEMES
+	| typeof FEATURE_GROUP_WOO
+	| typeof FEATURE_GROUP_CUSTOM_PLUGINS
+	| typeof FEATURE_GROUP_DEV_TOOLS;
 
 export interface FeatureFootnotes {
 	[ key: string ]: Feature[];
@@ -284,13 +291,6 @@ export type FeatureGroup = {
 	getFootnotes?: () => FeatureFootnotes;
 };
 export type FeatureGroupMap = Record< FeatureGroupSlug, FeatureGroup >;
-
-export type StorageOption = {
-	slug: WPComStorageAddOnSlug | WPComPlanStorageFeatureSlug;
-	// Determines if the storage option is an add-on that can be purchased. There are a mixture of patterns
-	// to identify add-ons for now, and we're temporarily adding one more
-	isAddOn: boolean;
-};
 
 export type Plan = BillingTerm & {
 	group: typeof GROUP_WPCOM | typeof GROUP_JETPACK | typeof GROUP_P2;
@@ -332,10 +332,10 @@ export type Plan = BillingTerm & {
 	 */
 	getPlanComparisonFeatureLabels?: () => Record< Feature, TranslateResult >;
 
-	get2023PricingGridSignupStorageOptions?: (
+	getStorageFeature?: (
 		showLegacyStorageFeature?: boolean,
 		isCurrentPlan?: boolean
-	) => StorageOption[];
+	) => WPComPlanStorageFeatureSlug;
 	getProductId: () => number;
 	getPathSlug?: () => string;
 	getStoreSlug: () => PlanSlug;

@@ -1,4 +1,5 @@
 import React from 'react';
+import { SiteFaviconFallback } from 'calypso/a8c-for-agencies/components/items-dashboard/site-favicon';
 
 export interface FeaturePreviewInterface {
 	id: string;
@@ -26,6 +27,7 @@ export interface ItemData {
 	isDotcomSite?: boolean;
 	adminUrl?: string;
 	withIcon?: boolean;
+	hideEnvDataInHeader?: boolean;
 }
 
 export interface PreviewPaneProps {
@@ -39,11 +41,12 @@ export interface PreviewPaneProps {
 	addTourDetails?: { id: string; tourId: string };
 	itemPreviewPaneHeaderExtraProps?: ItemPreviewPaneHeaderExtraProps;
 	hideNavIfSingleTab?: boolean;
+	enforceTabsView?: boolean;
 }
 
 export interface ItemPreviewPaneHeaderExtraProps {
 	externalIconSize?: number;
-	siteIconFallback?: 'color' | 'wordpress-logo' | 'first-grapheme';
+	siteIconFallback?: SiteFaviconFallback;
 	headerButtons?: React.ComponentType< {
 		focusRef: React.RefObject< HTMLButtonElement >;
 		itemData: ItemData;

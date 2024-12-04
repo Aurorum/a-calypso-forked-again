@@ -91,10 +91,13 @@ export function requestSites() {
 			} )
 			.then( ( response ) => {
 				const jetpackCloudSites = response.sites.filter( ( site ) => {
+					const isJetpack =
+						site?.jetpack || Boolean( site?.options?.jetpack_connection_active_plugins?.length );
+
 					// Filter Jetpack Cloud sites to exclude P2 and Simple non-Classic sites by default.
 					const isP2 = site?.options?.is_wpforteams_site;
 					const isSimpleClassic =
-						! site?.jetpack &&
+						! isJetpack &&
 						! site?.is_wpcom_atomic &&
 						site?.options?.wpcom_admin_interface !== 'wp-admin';
 
@@ -135,7 +138,7 @@ export function requestSite( siteFragment ) {
 		return wpcom.site( siteFragment ).get( query );
 	}
 
-	return ( dispatch ) => {
+	return ( dispatch, getState ) => {
 		dispatch( { type: SITE_REQUEST, siteId: siteFragment } );
 
 		const result = doRequest( false ).catch( ( error ) => {
@@ -155,7 +158,26 @@ export function requestSite( siteFragment ) {
 			.then( ( site ) => {
 				// If we can't manage the site, don't add it to state.
 				if ( site && site.capabilities ) {
-					dispatch( receiveSite( omit( site, '_headers' ) ) );
+					const state = getState();
+
+					const wasAtomic = state?.sites?.items?.[ siteFragment ]?.options?.is_wpcom_atomic;
+					const isAtomic = site?.options?.is_wpcom_atomic;
+					const hasSiteTransferredToAtomic = ! wasAtomic && isAtomic;
+
+					const wasAdmin = state?.currentUser?.capabilities?.[ siteFragment ]?.manage_options;
+					const isAdmin = site?.capabilities?.manage_options;
+					const hasMismatchingCapabilities = wasAdmin && ! isAdmin;
+
+					/*
+					 * Capabilities are not immediately propagated to the Atomic site
+					 * after transfer, so let's hold off updating the state until the
+					 * endpoint returns accurate data.
+					 */
+					if ( hasSiteTransferredToAtomic && hasMismatchingCapabilities ) {
+						setTimeout( () => dispatch( requestSite( siteFragment ) ), 2000 );
+					} else {
+						dispatch( receiveSite( omit( site, '_headers' ) ) );
+					}
 				}
 
 				dispatch( { type: SITE_REQUEST_SUCCESS, siteId: siteFragment } );

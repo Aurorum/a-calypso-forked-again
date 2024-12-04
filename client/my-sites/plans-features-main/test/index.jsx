@@ -45,8 +45,9 @@ jest.mock( '@automattic/data-stores', () => ( {
 
 jest.mock( 'calypso/components/data/query-active-promotions', () => jest.fn() );
 jest.mock( 'calypso/components/data/query-products-list', () => jest.fn() );
-jest.mock( 'calypso/lib/explat', () => ( {
-	useExperiment: () => [ false, { experimentName: 'control' } ],
+
+jest.mock( '../hooks/experiments/use-longer-plan-term-default-experiment', () => () => ( {
+	isLoadingExperiment: false,
 } ) );
 
 import {

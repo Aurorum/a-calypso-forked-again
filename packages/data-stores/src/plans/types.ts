@@ -7,7 +7,13 @@ import type { PlanSlug as PlanSlugFromProducts } from '@automattic/calypso-produ
 export type StorePlanSlug = ( typeof plansProductSlugs )[ number ];
 export type PlanSlug = ( typeof plansSlugs )[ number ];
 
-// at the moment possible plan paths are identical with plan slugs
+/**
+ * at the moment possible plan paths are identical with plan slugs
+ *
+ * Update 2024/07/10:
+ *   - it looks like the above is no longer the reality
+ *   - the type should either be removed (widened to string) or compiled to a list of all possible paths
+ */
 export type PlanPath = PlanSlug;
 
 export type PlanBillingPeriod = 'MONTHLY' | 'ANNUALLY';
@@ -51,7 +57,7 @@ export interface PlanProduct {
 	storeSlug: StorePlanSlug;
 	annualDiscount?: number;
 	periodAgnosticSlug: PlanSlug;
-	pathSlug?: PlanPath;
+	pathSlug?: string;
 	/**
 	 * Useful for two cases:
 	 * 1) to show how much we bill the users for annual plans ($8/mo billed $96)
@@ -61,11 +67,31 @@ export interface PlanProduct {
 }
 
 export interface PlanIntroductoryOffer {
+	/**
+	 * @deprecated use `formatCurrency` call instead on the respective price (monthly/full)
+	 */
 	formattedPrice: string;
-	rawPrice: number;
+	rawPrice: {
+		monthly: number;
+		full: number;
+	};
+	/**
+	 * IMPORTANT:
+	 * we make the raw assumption that the interval unit is either "year" or "month"
+	 * to compute monthly/full price
+	 */
 	intervalUnit: string;
 	intervalCount: number;
 	isOfferComplete: boolean;
+}
+
+export interface CostOverride {
+	doesOverrideOriginalCost: boolean;
+	firstUnitOnly: boolean;
+	newPrice: number;
+	oldPrice: number;
+	overrideCode: string;
+	percentage: number;
 }
 
 export interface PlanPricing {
@@ -93,7 +119,10 @@ export interface PlanPricing {
 	};
 }
 
-export interface SitePlanPricing extends Omit< PlanPricing, 'billPeriod' > {}
+export interface SitePlanPricing extends Omit< PlanPricing, 'billPeriod' > {
+	hasSaleCoupon?: boolean;
+	costOverrides?: CostOverride[];
+}
 
 /**
  * `PricingMetaForGridPlan` should be adjusted to extend `PlanPricing`, or modify `PlanPricing` to have a single pricing interface.
@@ -152,14 +181,33 @@ export interface PlanNext {
 	pricing: PlanPricing;
 	/* END: Same SitePlan/PlanNext props */
 	productNameShort: string;
+	pathSlug?: string;
 }
 
 export interface PricedAPIPlanIntroductoryOffer {
+	/**
+	 * @deprecated use `formatCurrency` call instead on the respective price (monthly/full)
+	 * - no need to pass this from the API at all
+	 */
 	introductory_offer_formatted_price?: string;
-	introductory_offer_raw_price?: number;
+	introductory_offer_raw_price_integer?: number;
+	/**
+	 * IMPORTANT:
+	 * we make the raw assumption that the interval unit is either "year" or "month"
+	 * to compute monthly/full price
+	 */
 	introductory_offer_interval_unit?: string;
 	introductory_offer_interval_count?: number;
 	introductory_offer_end_date?: string;
+}
+
+export interface PricedAPISitePlanCostOverride {
+	does_override_original_cost: boolean;
+	first_unit_only: boolean;
+	new_price: number;
+	old_price: number;
+	override_code: string;
+	percentage: number;
 }
 
 export interface PricedAPIPlanPricing {
@@ -185,6 +233,8 @@ export interface PricedAPIPlanPricing {
 export interface PricedAPISitePlanPricing
 	extends Omit< PricedAPIPlanPricing, 'orig_cost_integer' | 'bill_period' > {
 	raw_discount_integer: number;
+
+	cost_overrides?: PricedAPISitePlanCostOverride[];
 }
 
 /**
@@ -194,7 +244,7 @@ export interface PricedAPISitePlanPricing
 export interface PricedAPIPlan extends PricedAPIPlanPricing, PricedAPIPlanIntroductoryOffer {
 	product_id: number;
 	product_name: string;
-	path_slug?: PlanPath;
+	path_slug?: string;
 	product_slug: StorePlanSlug;
 	product_name_short: string;
 	product_type?: string;
@@ -220,6 +270,7 @@ export interface PricedAPIPlan extends PricedAPIPlanPricing, PricedAPIPlanIntrod
 export interface PricedAPISitePlan
 	extends PricedAPISitePlanPricing,
 		PricedAPIPlanIntroductoryOffer {
+	has_sale_coupon?: boolean;
 	/* product_id: number; // not included in the plan's payload */
 	product_slug: StorePlanSlug;
 	current_plan?: boolean;
@@ -248,7 +299,7 @@ export interface PricedAPIPlanFree extends PricedAPIPlan {
 	raw_price_integer: 0;
 }
 export interface PricedAPIPlanPaidAnnually extends PricedAPIPlan {
-	path_slug: PlanPath;
+	path_slug: string;
 	bill_period: 365;
 }
 export interface PricedAPIPlanPaidMonthly extends PricedAPIPlan {

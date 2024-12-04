@@ -5,16 +5,22 @@ import { Button, CheckboxControl } from '@wordpress/components';
 import { useTranslate } from 'i18n-calypso';
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { recordTracksEvent } from 'calypso/lib/analytics/tracks';
+import { useJetpackConnectionStatus } from 'calypso/my-sites/stats/hooks/use-jetpack-connection-status';
 import { useSelector } from 'calypso/state';
 import getIsSiteWPCOM from 'calypso/state/selectors/is-site-wpcom';
-import { isJetpackSite, getSiteAdminUrl, getSiteOption } from 'calypso/state/sites/selectors';
+import {
+	isJetpackSite,
+	getSiteAdminUrl,
+	getSiteOption,
+	getIsSimpleSite,
+} from 'calypso/state/sites/selectors';
 import getEnvStatsFeatureSupportChecks from 'calypso/state/sites/selectors/get-env-stats-feature-supports';
 import { JETPACK_BLOG_ABOUT_COMMERCIAL_STATS_URL } from '../const';
 import useAvailableUpgradeTiers from '../hooks/use-available-upgrade-tiers';
 import useOnDemandCommercialClassificationMutation from '../hooks/use-on-demand-site-identification-mutation';
 import useSiteCompulsoryPlanSelectionQualifiedCheck from '../hooks/use-site-compulsory-plan-selection-qualified-check';
 import useStatsPurchases from '../hooks/use-stats-purchases';
-import { StatsCommercialUpgradeSlider, getTierQuentity } from './stats-commercial-upgrade-slider';
+import { StatsCommercialUpgradeSlider, getTierQuantity } from './stats-commercial-upgrade-slider';
 import gotoCheckoutPage from './stats-purchase-checkout-redirect';
 import {
 	MIN_STEP_SPLITS,
@@ -24,7 +30,6 @@ import {
 } from './stats-purchase-consts';
 import PersonalPurchase from './stats-purchase-personal';
 import {
-	StatsCommercialPriceDisplay,
 	StatsBenefitsCommercial,
 	StatsSingleItemPagePurchaseFrame,
 	StatsSingleItemCard,
@@ -137,7 +142,6 @@ const useLocalizedStrings = ( isCommercial: boolean ) => {
 const StatsCommercialPurchase = ( {
 	siteId,
 	siteSlug,
-	planValue,
 	currencyCode,
 	from,
 	adminUrl,
@@ -145,16 +149,21 @@ const StatsCommercialPurchase = ( {
 }: StatsCommercialPurchaseProps ) => {
 	const translate = useTranslate();
 	const isWPCOMSite = useSelector( ( state ) => siteId && getIsSiteWPCOM( state, siteId ) );
-	const isTierUpgradeSliderEnabled = config.isEnabled( 'stats/tier-upgrade-slider' );
 	const tiers = useAvailableUpgradeTiers( siteId ) || [];
-	const { isCommercialOwned } = useStatsPurchases( siteId );
+	const haveTiers = tiers.length > 0;
+	const { isCommercialOwned, hasAnyStatsPlan } = useStatsPurchases( siteId );
+	const isSimpleSite = useSelector( ( state ) => getIsSimpleSite( state, siteId ) );
+	const { data: connectionStatus } = useJetpackConnectionStatus( siteId, !! isSimpleSite );
 
 	// The button of @automattic/components has built-in color scheme support for Calypso.
 	const ButtonComponent = isWPCOMSite ? CalypsoButton : Button;
-	const startingTierQuantity = getTierQuentity( tiers[ 0 ], isTierUpgradeSliderEnabled );
+	const startingTierQuantity = haveTiers ? getTierQuantity( tiers[ 0 ] ) : 0;
 	const [ purchaseTierQuantity, setPurchaseTierQuantity ] = useState( startingTierQuantity ?? 0 );
 
 	const isOdysseyStats = config.isEnabled( 'is_running_in_jetpack_site' );
+
+	const needsConnectionForUpgrade =
+		hasAnyStatsPlan && isOdysseyStats && ! connectionStatus?.isSiteFullyConnected;
 
 	const handleSliderChanged = useCallback( ( value: number ) => {
 		setPurchaseTierQuantity( value );
@@ -165,7 +174,25 @@ const StatsCommercialPurchase = ( {
 	) as boolean;
 	const { pageTitle, infoText, continueButtonText } = useLocalizedStrings( isCommercial );
 
-	// TODO: Remove isTierUpgradeSliderEnabled code paths.
+	const tierSelectionElements = haveTiers ? (
+		<>
+			<p>{ translate( 'Pick your Stats tier below:' ) }</p>
+			<StatsCommercialUpgradeSlider
+				tiers={ tiers }
+				currencyCode={ currencyCode }
+				analyticsEventName={ `${
+					isOdysseyStats ? 'jetpack_odyssey' : 'calypso'
+				}_stats_purchase_commercial_slider_clicked` }
+				onSliderChange={ handleSliderChanged }
+			/>
+		</>
+	) : (
+		<p>
+			{ translate(
+				'Unable to load plan tiers. Please make sure you have an active network connection and try reloading the page.'
+			) }
+		</p>
+	);
 
 	return (
 		<>
@@ -177,55 +204,42 @@ const StatsCommercialPurchase = ( {
 				</>
 			) }
 			{ isCommercialOwned && <StatsUpgradeInstructions /> }
-			{ ! isTierUpgradeSliderEnabled && (
-				<>
-					<StatsCommercialPriceDisplay planValue={ planValue } currencyCode={ currencyCode } />
-					<ButtonComponent
-						variant="primary"
-						primary={ isWPCOMSite ? true : undefined }
-						onClick={ () =>
-							gotoCheckoutPage( { from, type: 'commercial', siteSlug, adminUrl, redirectUri } )
-						}
-					>
-						{ translate( 'Get Stats' ) }
-					</ButtonComponent>
-				</>
+			{ tierSelectionElements }
+			{ needsConnectionForUpgrade && (
+				<div className="stats-purchase-wizard__notice connection-notice">
+					{ translate( 'Please {{link}}connect your user account{{/link}} to upgrade Stats.', {
+						components: {
+							link: <a href={ `${ adminUrl }admin.php?page=my-jetpack#/connection` } />,
+						},
+					} ) }
+				</div>
 			) }
-			{ isTierUpgradeSliderEnabled && (
-				<>
-					<p>{ translate( 'Pick your Stats tier below:' ) }</p>
-					<StatsCommercialUpgradeSlider
-						currencyCode={ currencyCode }
-						analyticsEventName={ `${
-							isOdysseyStats ? 'jetpack_odyssey' : 'calypso'
-						}_stats_purchase_commercial_slider_clicked` }
-						onSliderChange={ handleSliderChanged }
-					/>
-					<div className="stats-purchase-wizard__actions">
-						<ButtonComponent
-							variant="primary"
-							primary={ isWPCOMSite ? true : undefined }
-							onClick={ () =>
-								gotoCheckoutPage( {
-									from,
-									type: 'commercial',
-									siteSlug,
-									adminUrl,
-									redirectUri,
-									price: undefined,
-									quantity: purchaseTierQuantity,
-									isUpgrade: isCommercialOwned,
-								} )
-							}
-						>
-							{ continueButtonText }
-						</ButtonComponent>
-					</div>
-					<div className="stats-purchase-page__footnotes">
-						<p>{ translate( '(*) 14-day money-back guarantee' ) }</p>
-					</div>
-				</>
-			) }
+			<div className="stats-purchase-wizard__actions">
+				<ButtonComponent
+					variant="primary"
+					primary={ isWPCOMSite ? true : undefined }
+					disabled={ ! haveTiers || needsConnectionForUpgrade }
+					onClick={ () =>
+						gotoCheckoutPage( {
+							from,
+							type: 'commercial',
+							siteSlug,
+							siteId,
+							adminUrl,
+							redirectUri,
+							price: undefined,
+							quantity: purchaseTierQuantity,
+							isUpgrade: hasAnyStatsPlan, // All cross grades are not possible for the site-only flow.
+							isSiteFullyConnected: !! connectionStatus?.isSiteFullyConnected,
+						} )
+					}
+				>
+					{ continueButtonText }
+				</ButtonComponent>
+			</div>
+			<div className="stats-purchase-page__footnotes">
+				<p>{ translate( '(*) 14-day money-back guarantee' ) }</p>
+			</div>
 		</>
 	);
 };
@@ -241,6 +255,7 @@ const StatsPersonalPurchase = ( {
 	disableFreeProduct = false,
 }: StatsPersonalPurchaseProps ) => {
 	const translate = useTranslate();
+
 	const sliderStepPrice = pwywProduct.cost / MIN_STEP_SPLITS;
 
 	const steps = Math.floor( maxSliderPrice / sliderStepPrice );
@@ -256,10 +271,9 @@ const StatsPersonalPurchase = ( {
 		e.preventDefault();
 		const isOdysseyStats = config.isEnabled( 'is_running_in_jetpack_site' );
 		const event_from = isOdysseyStats ? 'jetpack_odyssey' : 'calypso';
-		const queryFrom = isOdysseyStats ? '&from=jetpack-my-jetpack' : '';
 		recordTracksEvent( `${ event_from }_stats_plan_switched_from_personal_to_commercial` );
 
-		page( `/stats/purchase/${ siteSlug }?productType=commercial${ queryFrom }` );
+		page( `/stats/purchase/${ siteSlug }?productType=commercial&from=switch-from-personal` );
 	};
 
 	return (
@@ -407,7 +421,11 @@ function StatsCommercialFlowOptOutForm( {
 	const handleSwitchToPersonalClick = () => {
 		const event_from = isOdysseyStats ? 'jetpack_odyssey' : 'calypso';
 		recordTracksEvent( `${ event_from }_stats_purchase_commercial_switch_to_personal_clicked` );
-		setTimeout( () => page( `/stats/purchase/${ siteSlug }?productType=personal` ), 250 );
+		setTimeout(
+			() =>
+				page( `/stats/purchase/${ siteSlug }?productType=personal&from=switch-from-commercial` ),
+			250
+		);
 	};
 
 	const handleRequestUpdateClick = () => {

@@ -1,20 +1,14 @@
 import config from '@automattic/calypso-config';
-import {
-	isJetpackPlanSlug,
-	isJetpackProductSlug,
-	setPlansListExperiment,
-} from '@automattic/calypso-products';
+import { isJetpackPlanSlug, isJetpackProductSlug } from '@automattic/calypso-products';
 import page from '@automattic/calypso-router';
-import { localStorageExperimentAssignmentKey } from '@automattic/explat-client/src/internal/experiment-assignment-store';
-import localStorage from '@automattic/explat-client/src/internal/local-storage';
 import {
 	getLanguage,
 	getLanguageSlugs,
 	removeLocaleFromPathLocaleInFront,
 } from '@automattic/i18n-utils';
 import { QueryClientProvider } from '@tanstack/react-query';
+import { removeQueryArgs } from '@wordpress/url';
 import { translate } from 'i18n-calypso';
-import { useEffect } from 'react';
 import { Provider as ReduxProvider } from 'react-redux';
 import CalypsoI18nProvider from 'calypso/components/calypso-i18n-provider';
 import EmptyContent from 'calypso/components/empty-content';
@@ -22,7 +16,6 @@ import MomentProvider from 'calypso/components/localized-moment/provider';
 import { RouteProvider } from 'calypso/components/route';
 import Layout from 'calypso/layout';
 import LayoutLoggedOut from 'calypso/layout/logged-out';
-import { loadExperimentAssignment, useExperiment } from 'calypso/lib/explat';
 import { navigate } from 'calypso/lib/navigate';
 import { createAccountUrl, login } from 'calypso/lib/paths';
 import { CalypsoReactQueryDevtools } from 'calypso/lib/react-query-devtools-helper';
@@ -38,6 +31,7 @@ import {
 } from 'calypso/state/immediate-login/selectors';
 import { canCurrentUser } from 'calypso/state/selectors/can-current-user';
 import { getSiteAdminUrl, getSiteHomeUrl, getSiteOption } from 'calypso/state/sites/selectors';
+import { setSelectedSiteId } from 'calypso/state/ui/actions/set-sites.js';
 import { getSelectedSite } from 'calypso/state/ui/selectors';
 import { makeLayoutMiddleware } from './shared.js';
 import { hydrate, render } from './web-util.js';
@@ -48,7 +42,6 @@ import { hydrate, render } from './web-util.js';
 export { setLocaleMiddleware, setSectionMiddleware } from './shared.js';
 export { hydrate, render } from './web-util.js';
 
-const PLAN_NAME_EXPERIMENT = 'wpcom_plan_name_change_personal_premium_v1';
 export const ProviderWrappedLayout = ( {
 	store,
 	queryClient,
@@ -62,24 +55,6 @@ export const ProviderWrappedLayout = ( {
 } ) => {
 	const state = store.getState();
 	const userLoggedIn = isUserLoggedIn( state );
-
-	const [ isLoading, experimentAssignment ] = useExperiment( PLAN_NAME_EXPERIMENT );
-
-	useEffect( () => {
-		if ( ! isLoading ) {
-			setPlansListExperiment( PLAN_NAME_EXPERIMENT, experimentAssignment?.variationName );
-		}
-	}, [ isLoading, experimentAssignment?.variationName ] );
-
-	useEffect( () => {
-		// TODO: Implement a proper way to reset the experiment assignment
-		try {
-			localStorage.removeItem( localStorageExperimentAssignmentKey( PLAN_NAME_EXPERIMENT ) );
-			loadExperimentAssignment( PLAN_NAME_EXPERIMENT );
-		} catch ( e ) {
-			// Ignore NS_ERROR_FILE_NOT_FOUND Firefox (bug report: https://bugzilla.mozilla.org/show_bug.cgi?id=1536796)
-		}
-	}, [ userLoggedIn ] );
 
 	const layout = userLoggedIn ? (
 		<Layout primary={ primary } secondary={ secondary } />
@@ -226,7 +201,9 @@ export function redirectLoggedOutToSignup( context, next ) {
  */
 export function redirectMyJetpack( context, next ) {
 	const state = context.store.getState();
-	const product = getProductSlugFromContext( context );
+	const productSlug = getProductSlugFromContext( context );
+	// Strip the slug's quantity suffix, for upgradable quantity based products.
+	const product = productSlug.replace( /:-q-\d+/, '' );
 	const isJetpackProduct = isJetpackPlanSlug( product ) || isJetpackProductSlug( product );
 
 	if ( isJetpackProduct && ! isUserLoggedIn( state ) && isContextSourceMyJetpack( context ) ) {
@@ -311,8 +288,10 @@ export function redirectIfJetpackNonAtomic( context, next ) {
 	const site = getSelectedSite( state );
 	const isAtomicSite = !! site?.is_wpcom_atomic || !! site?.is_wpcom_staging_site;
 	const isJetpackNonAtomic = ! isAtomicSite && !! site?.jetpack;
+	const isDisconnectedJetpackAndNotAtomic =
+		! site?.is_wpcom_atomic && site?.jetpack_connection && ! site?.jetpack;
 
-	if ( isJetpackNonAtomic ) {
+	if ( isJetpackNonAtomic || isDisconnectedJetpackAndNotAtomic ) {
 		return redirectToDashboard( context );
 	}
 
@@ -330,7 +309,7 @@ export function redirectToHostingPromoIfNotAtomic( context, next ) {
 	const site = getSelectedSite( state );
 	const isAtomicSite = !! site?.is_wpcom_atomic || !! site?.is_wpcom_staging_site;
 
-	if ( config.isEnabled( 'layout/dotcom-nav-redesign-v2' ) && ! isAtomicSite ) {
+	if ( ! isAtomicSite || site.plan?.expired ) {
 		return page.redirect( `/hosting-features/${ site?.slug }` );
 	}
 
@@ -385,5 +364,24 @@ export const notFound = ( context, next ) => {
 	);
 	/* eslint-enable wpcalypso/jsx-classname-namespace */
 
+	next();
+};
+
+/**
+ * Middleware to set the selected site ID based on the `origin_site_id` query parameter.
+ */
+export const setSelectedSiteIdByOrigin = ( context, next ) => {
+	const originSiteId = ( context.query.origin_site_id ?? '' ).trim();
+	if ( originSiteId ) {
+		context.store.dispatch( setSelectedSiteId( originSiteId ) );
+		context.page.replace( removeQueryArgs( context.canonicalPath, 'origin_site_id' ) );
+	}
+	next();
+};
+
+/**
+ * This function is only used to provide API compatibility for the sections that use shared controllers.
+ */
+export const ssrSetupLocale = ( _context, next ) => {
 	next();
 };

@@ -8,15 +8,12 @@ import qs from 'qs';
 import { PureComponent } from 'react';
 import { connect } from 'react-redux';
 import Legend from 'calypso/components/chart/legend';
+import { getShortcuts } from 'calypso/components/date-range/use-shortcuts';
 import { withLocalizedMoment } from 'calypso/components/localized-moment';
 import StatsDateControl from 'calypso/components/stats-date-control';
 import IntervalDropdown from 'calypso/components/stats-interval-dropdown';
 import {
 	STATS_FEATURE_DATE_CONTROL,
-	STATS_FEATURE_DATE_CONTROL_LAST_30_DAYS,
-	STATS_FEATURE_DATE_CONTROL_LAST_7_DAYS,
-	STATS_FEATURE_DATE_CONTROL_LAST_90_DAYS,
-	STATS_FEATURE_DATE_CONTROL_LAST_YEAR,
 	STATS_FEATURE_INTERVAL_DROPDOWN,
 	STATS_FEATURE_INTERVAL_DROPDOWN_DAY,
 	STATS_FEATURE_INTERVAL_DROPDOWN_MONTH,
@@ -28,10 +25,12 @@ import { recordGoogleEvent as recordGoogleEventAction } from 'calypso/state/anal
 import { isJetpackSite } from 'calypso/state/sites/selectors';
 import { toggleUpsellModal } from 'calypso/state/stats/paid-stats-upsell/actions';
 import { getSelectedSiteId } from 'calypso/state/ui/selectors';
+import { getMomentSiteZone } from '../hooks/use-moment-site-zone';
 import { shouldGateStats } from '../hooks/use-should-gate-stats';
 import { withStatsPurchases } from '../hooks/use-stats-purchases';
 import NavigationArrows from '../navigation-arrows';
 import StatsCardUpsell from '../stats-card-upsell';
+import { getPathWithUpdatedQueryString } from '../utils';
 
 import './style.scss';
 
@@ -46,6 +45,7 @@ class StatsPeriodNavigation extends PureComponent {
 		startDate: PropTypes.bool,
 		endDate: PropTypes.bool,
 		isWithNewDateControl: PropTypes.bool,
+		isNewDateFilteringEnabled: PropTypes.bool,
 	};
 
 	static defaultProps = {
@@ -57,6 +57,7 @@ class StatsPeriodNavigation extends PureComponent {
 		startDate: false,
 		endDate: false,
 		isWithNewDateControl: false,
+		isNewDateFilteringEnabled: false,
 	};
 
 	handleArrowEvent = ( arrow, href ) => {
@@ -102,6 +103,19 @@ class StatsPeriodNavigation extends PureComponent {
 		return newParams;
 	};
 
+	handleArrowPrevious = () => {
+		const { date, moment, period, url, queryParams, isEmailStats, maxBars } = this.props;
+		const numberOfDAys = this.getNumberOfDays( isEmailStats, period, maxBars );
+		const usedPeriod = this.calculatePeriod( period );
+		const previousDay = moment( date ).subtract( numberOfDAys, usedPeriod ).format( 'YYYY-MM-DD' );
+		const newQueryParams = this.queryParamsForPreviousDate( previousDay );
+		const previousDayQuery = qs.stringify( Object.assign( {}, queryParams, newQueryParams ), {
+			addQueryPrefix: true,
+		} );
+		const href = `${ url }${ previousDayQuery }`;
+		this.handleArrowEvent( 'previous', href );
+	};
+
 	handleArrowNext = () => {
 		const { date, moment, period, url, queryParams, isEmailStats, maxBars } = this.props;
 		const numberOfDAys = this.getNumberOfDays( isEmailStats, period, maxBars );
@@ -113,6 +127,39 @@ class StatsPeriodNavigation extends PureComponent {
 		} );
 		const href = `${ url }${ nextDayQuery }`;
 		this.handleArrowEvent( 'next', href );
+	};
+
+	handlePreviousDateRangeNavigation = () => {
+		this.handleArrowNavigation( true );
+	};
+
+	handleNextRangeDateNavigation = () => {
+		this.handleArrowNavigation( false );
+	};
+
+	handleArrowNavigation = ( previousOrNext = false ) => {
+		const { moment, period, slug, dateRange } = this.props;
+
+		const navigationStart = moment( dateRange.chartStart );
+		const navigationEnd = moment( dateRange.chartEnd );
+
+		if ( previousOrNext ) {
+			// Navigate to the previous date range.
+			navigationStart.subtract( dateRange.daysInRange, 'days' );
+			navigationEnd.subtract( dateRange.daysInRange, 'days' );
+		} else {
+			// Navigate to the next date range.
+			navigationStart.add( dateRange.daysInRange, 'days' );
+			navigationEnd.add( dateRange.daysInRange, 'days' );
+		}
+
+		const chartStart = navigationStart.format( 'YYYY-MM-DD' );
+		const chartEnd = navigationEnd.format( 'YYYY-MM-DD' );
+
+		const path = `/stats/${ period }/${ slug }`;
+		const url = getPathWithUpdatedQueryString( { chartStart, chartEnd }, path );
+
+		page( url );
 	};
 
 	queryParamsForPreviousDate = ( previousDay ) => {
@@ -136,19 +183,6 @@ class StatsPeriodNavigation extends PureComponent {
 		return newParams;
 	};
 
-	handleArrowPrevious = () => {
-		const { date, moment, period, url, queryParams, isEmailStats, maxBars } = this.props;
-		const numberOfDAys = this.getNumberOfDays( isEmailStats, period, maxBars );
-		const usedPeriod = this.calculatePeriod( period );
-		const previousDay = moment( date ).subtract( numberOfDAys, usedPeriod ).format( 'YYYY-MM-DD' );
-		const newQueryParams = this.queryParamsForPreviousDate( previousDay );
-		const previousDayQuery = qs.stringify( Object.assign( {}, queryParams, newQueryParams ), {
-			addQueryPrefix: true,
-		} );
-		const href = `${ url }${ previousDayQuery }`;
-		this.handleArrowEvent( 'previous', href );
-	};
-
 	// Copied from`client/my-sites/stats/stats-chart-tabs/index.jsx`
 	onLegendClick = ( chartItem ) => {
 		const activeLegend = this.props.activeLegend.slice();
@@ -169,6 +203,11 @@ class StatsPeriodNavigation extends PureComponent {
 	};
 
 	onGatedHandler = ( events, source, statType ) => {
+		// Stop the popup from showing for Jetpack sites.
+		if ( this.props.isSiteJetpackNotAtomic ) {
+			return;
+		}
+
 		events.forEach( ( event ) => recordTracksEvent( event.name, event.params ) );
 		this.props.toggleUpsellModal( this.props.siteId, statType );
 	};
@@ -185,25 +224,78 @@ class StatsPeriodNavigation extends PureComponent {
 			queryParams,
 			slug,
 			isWithNewDateControl,
+			isNewDateFilteringEnabled,
 			dateRange,
 			shortcutList,
 			gateDateControl,
 			intervals,
 			siteId,
-			supportCommercialUse,
-			isSiteJetpackNotAtomic,
+			momentSiteZone,
 		} = this.props;
 
-		const isToday = moment( date ).isSame( moment(), period );
+		const isToday = moment( date ).isSame( momentSiteZone, period );
+
+		// TODO: Refactor the isNewDateFilteringEnabled dedicated variables.
+		const isChartRangeEndSameOrAfterToday = moment( dateRange?.chartEnd ).isSameOrAfter(
+			momentSiteZone,
+			'day'
+		);
+		const showArrowsForDateRange = showArrows && dateRange?.daysInRange <= 31;
 
 		return (
 			<div
 				className={ clsx( 'stats-period-navigation', {
 					'stats-period-navigation__is-with-new-date-control': isWithNewDateControl,
+					'stats-period-navigation__is-with-new-date-filtering': isNewDateFilteringEnabled,
 				} ) }
 			>
 				<div className="stats-period-navigation__children">{ children }</div>
-				{ isWithNewDateControl ? (
+
+				{ /* Legacy view: Show only navigation arrows when not using new date control */ }
+				{ ! isWithNewDateControl && showArrows && (
+					<NavigationArrows
+						disableNextArrow={ disableNextArrow || isToday }
+						disablePreviousArrow={ disablePreviousArrow }
+						onClickNext={ this.handleArrowNext }
+						onClickPrevious={ this.handleArrowPrevious }
+					/>
+				) }
+
+				{ /* New filtering view: Shows date control in a simplified layout */ }
+				{ isWithNewDateControl && isNewDateFilteringEnabled && (
+					<div className="stats-period-navigation__date-range-control">
+						{ showArrowsForDateRange && (
+							<NavigationArrows
+								disableNextArrow={ disableNextArrow || isChartRangeEndSameOrAfterToday }
+								disablePreviousArrow={ disablePreviousArrow }
+								onClickNext={ this.handleNextRangeDateNavigation }
+								onClickPrevious={ this.handlePreviousDateRangeNavigation }
+							/>
+						) }
+						<div className="stats-period-navigation__date-control">
+							<StatsDateControl
+								slug={ slug }
+								queryParams={ queryParams }
+								dateRange={ dateRange }
+								shortcutList={ shortcutList }
+								onGatedHandler={ this.onGatedHandler }
+								overlay={
+									gateDateControl && (
+										<StatsCardUpsell
+											className="stats-module__upsell"
+											statType={ STATS_FEATURE_DATE_CONTROL }
+											siteId={ siteId }
+										/>
+									)
+								}
+								isNewDateFilteringEnabled
+							/>
+						</div>
+					</div>
+				) }
+
+				{ /* Standard new date control view: Shows date control with additional controls (Legend, IntervalDropdown) */ }
+				{ isWithNewDateControl && ! isNewDateFilteringEnabled && (
 					<div className="stats-period-navigation__date-control">
 						<StatsDateControl
 							slug={ slug }
@@ -212,8 +304,7 @@ class StatsPeriodNavigation extends PureComponent {
 							shortcutList={ shortcutList }
 							onGatedHandler={ this.onGatedHandler }
 							overlay={
-								// TODO: getDateControl is only used by WPCOM at the moment, and we should refactor to reuse it rather than having a separate supportCommercialUse here.
-								( gateDateControl || ( ! supportCommercialUse && isSiteJetpackNotAtomic ) ) && (
+								gateDateControl && (
 									<StatsCardUpsell
 										className="stats-module__upsell"
 										statType={ STATS_FEATURE_DATE_CONTROL }
@@ -249,25 +340,20 @@ class StatsPeriodNavigation extends PureComponent {
 							/>
 						</div>
 					</div>
-				) : (
-					<>
-						{ showArrows && (
-							<NavigationArrows
-								disableNextArrow={ disableNextArrow || isToday }
-								disablePreviousArrow={ disablePreviousArrow }
-								onClickNext={ this.handleArrowNext }
-								onClickPrevious={ this.handleArrowPrevious }
-							/>
-						) }
-					</>
 				) }
 			</div>
 		);
 	}
 }
 
+const addIsGatedFor = ( state, siteId ) => ( shortcut ) => ( {
+	...shortcut,
+	isGated: shouldGateStats( state, siteId, `${ STATS_FEATURE_DATE_CONTROL }/${ shortcut.id }` ),
+	statType: `${ STATS_FEATURE_DATE_CONTROL }/${ shortcut.id }`,
+} );
+
 const connectComponent = connect(
-	( state, { period } ) => {
+	( state, { period, isNewDateFilteringEnabled } ) => {
 		const siteId = getSelectedSiteId( state );
 		const gateDateControl = shouldGateStats( state, siteId, STATS_FEATURE_DATE_CONTROL );
 		const gatePeriodInterval = shouldGateStats(
@@ -278,44 +364,14 @@ const connectComponent = connect(
 		const isSiteJetpackNotAtomic = isJetpackSite( state, siteId, {
 			treatAtomicAsJetpackSite: false,
 		} );
-		const shortcutList = [
-			{
-				id: 'last_7_days',
-				label: translate( 'Last 7 Days' ),
-				offset: 0,
-				range: 6,
-				period: STATS_PERIOD.DAY,
-				isGated: shouldGateStats( state, siteId, STATS_FEATURE_DATE_CONTROL_LAST_7_DAYS ),
-				statType: STATS_FEATURE_DATE_CONTROL_LAST_7_DAYS,
-			},
-			{
-				id: 'last_30_days',
-				label: translate( 'Last 30 Days' ),
-				offset: 0,
-				range: 29,
-				period: STATS_PERIOD.DAY,
-				isGated: shouldGateStats( state, siteId, STATS_FEATURE_DATE_CONTROL_LAST_30_DAYS ),
-				statType: STATS_FEATURE_DATE_CONTROL_LAST_30_DAYS,
-			},
-			{
-				id: 'last_3_months',
-				label: translate( 'Last 90 Days' ),
-				offset: 0,
-				range: 89,
-				period: STATS_PERIOD.WEEK,
-				isGated: shouldGateStats( state, siteId, STATS_FEATURE_DATE_CONTROL_LAST_90_DAYS ),
-				statType: STATS_FEATURE_DATE_CONTROL_LAST_90_DAYS,
-			},
-			{
-				id: 'last_year',
-				label: translate( 'Last Year' ),
-				offset: 0,
-				range: 364, // ranges are zero based!
-				period: STATS_PERIOD.MONTH,
-				isGated: shouldGateStats( state, siteId, STATS_FEATURE_DATE_CONTROL_LAST_YEAR ),
-				statType: STATS_FEATURE_DATE_CONTROL_LAST_YEAR,
-			},
-		];
+
+		const { supportedShortcutList } = getShortcuts(
+			state,
+			{},
+			undefined,
+			isNewDateFilteringEnabled
+		);
+		const shortcutList = supportedShortcutList.map( addIsGatedFor( state, siteId ) );
 		const intervals = {
 			[ STATS_PERIOD.DAY ]: {
 				id: STATS_PERIOD.DAY,
@@ -350,6 +406,7 @@ const connectComponent = connect(
 			intervals,
 			siteId,
 			isSiteJetpackNotAtomic,
+			momentSiteZone: getMomentSiteZone( state, siteId ),
 		};
 	},
 	{ recordGoogleEvent: recordGoogleEventAction, toggleUpsellModal }

@@ -34,6 +34,7 @@
 	align-items: flex-start;
 	height: 100%;
 	overscroll-behavior: contain;
+	padding-top: 16px;
 
 	.odie-chatbox-bottom-edge {
 		min-height: 8px;
@@ -42,7 +43,36 @@
 
 	.odie-chatbox-message-sources-container {
 		width: 100%;
+		display: flex;
+		flex-direction: column;
+		align-items: flex-end;
+		&:last-of-type > .odie-chatbox-message-sources-container {
+			margin-bottom: 64px;
+		}
 	}
+	
+	.chatbox-loading-chat__spinner {
+		display: flex;
+		width: 100%;
+		justify-content: center;
+		padding: 16px 0;
+	}
+
+	.odie-chat__date {
+		display: flex;
+		flex-direction: row;
+		justify-content: center;
+		width: 100%;
+		padding-bottom: 16px;
+		color: var(--studio-gray-50);
+		font-size: 0.75rem;
+	}
+}
+
+.odie-chatbox-message-dislike-feedback {
+	min-height: 235px;
+	gap: 18px;
+	justify-content: flex-start;
 }
 
 .chat-box-message-container {
@@ -72,15 +102,16 @@
 .odie-chat-message-input-container {
 	z-index: 10;
 	position: fixed;
-	width: 100%;
 	bottom: 0;
+	left: 0;
+	right: 0;
 	max-width: 410px;
 	flex-shrink: 0;
 	box-sizing: border-box;
 	border-radius: 4px;
 	border-top-left-radius: 0;
 	border-top-right-radius: 0;
-	padding: 12px;
+	padding: 16px;
 	border-top: 1px solid var(--gray-gray-5, #dcdcde);
 	background: var(--black-white-white, #fff);
 }

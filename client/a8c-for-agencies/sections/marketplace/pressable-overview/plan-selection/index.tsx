@@ -1,8 +1,13 @@
-import { useCallback, useEffect, useState } from 'react';
+import { isEnabled } from '@automattic/calypso-config';
+import clsx from 'clsx';
+import { useTranslate } from 'i18n-calypso';
+import { useCallback, useEffect, useState, useContext } from 'react';
 import { useDispatch } from 'calypso/state';
 import { recordTracksEvent } from 'calypso/state/analytics/actions';
 import { APIProductFamilyProduct } from 'calypso/state/partner-portal/types';
+import { MarketplaceTypeContext } from '../../context';
 import useProductAndPlans from '../../hooks/use-product-and-plans';
+import usePressableOwnershipType from '../../hosting-overview/hooks/use-pressable-ownership-type';
 import useExistingPressablePlan from '../hooks/use-existing-pressable-plan';
 import PlanSelectionDetails from './details';
 import PlanSelectionFilter from './filter';
@@ -15,8 +20,15 @@ type Props = {
 
 export default function PressableOverviewPlanSelection( { onAddToCart }: Props ) {
 	const dispatch = useDispatch();
+	const translate = useTranslate();
 
 	const [ selectedPlan, setSelectedPlan ] = useState< APIProductFamilyProduct | null >( null );
+
+	const isNewHostingPage = isEnabled( 'a4a-hosting-page-redesign' );
+
+	const { marketplaceType } = useContext( MarketplaceTypeContext );
+
+	const isReferMode = marketplaceType === 'referral';
 
 	const onSelectPlan = useCallback(
 		( plan: APIProductFamilyProduct | null ) => {
@@ -30,7 +42,11 @@ export default function PressableOverviewPlanSelection( { onAddToCart }: Props )
 		productSearchQuery: '',
 	} );
 
-	const { existingPlan, isReady: isExistingPlanFetched } = useExistingPressablePlan( {
+	const {
+		existingPlan,
+		pressablePlan,
+		isReady: isExistingPlanFetched,
+	} = useExistingPressablePlan( {
 		plans: pressablePlans,
 	} );
 
@@ -39,6 +55,12 @@ export default function PressableOverviewPlanSelection( { onAddToCart }: Props )
 			setSelectedPlan( pressablePlans[ 0 ] );
 		}
 	}, [ pressablePlans, setSelectedPlan ] );
+
+	useEffect( () => {
+		if ( existingPlan ) {
+			setSelectedPlan( existingPlan );
+		}
+	}, [ existingPlan ] );
 
 	const onPlanAddToCart = useCallback( () => {
 		if ( selectedPlan ) {
@@ -51,20 +73,38 @@ export default function PressableOverviewPlanSelection( { onAddToCart }: Props )
 		}
 	}, [ dispatch, onAddToCart, selectedPlan ] );
 
+	const pressableOwnership = usePressableOwnershipType();
+
 	return (
-		<div className="pressable-overview-plan-selection">
-			<PlanSelectionFilter
-				selectedPlan={ selectedPlan }
-				plans={ pressablePlans }
-				onSelectPlan={ onSelectPlan }
-				existingPlan={ existingPlan }
-				isLoading={ ! isExistingPlanFetched }
-			/>
+		<div
+			className={ clsx( 'pressable-overview-plan-selection', {
+				'is-new-hosting-page': isNewHostingPage,
+				'is-slider-hidden': pressableOwnership === 'regular' || isReferMode,
+			} ) }
+		>
+			{ pressableOwnership !== 'regular' && ! isReferMode && (
+				<>
+					{ existingPlan && (
+						<div className="pressable-overview-plan-selection__upgrade-title">
+							{ translate( 'Upgrade your plan' ) }
+						</div>
+					) }
+					<PlanSelectionFilter
+						selectedPlan={ selectedPlan }
+						plans={ pressablePlans }
+						onSelectPlan={ onSelectPlan }
+						pressablePlan={ pressablePlan }
+						isLoading={ ! isExistingPlanFetched }
+					/>
+				</>
+			) }
 
 			<PlanSelectionDetails
 				selectedPlan={ selectedPlan }
 				onSelectPlan={ onPlanAddToCart }
 				isLoading={ ! isExistingPlanFetched }
+				pressableOwnership={ pressableOwnership }
+				isReferMode={ isReferMode }
 			/>
 		</div>
 	);

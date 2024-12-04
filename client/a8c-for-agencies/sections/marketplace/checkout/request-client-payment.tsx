@@ -1,23 +1,29 @@
 import page from '@automattic/calypso-router';
-import { Button, FormLabel } from '@automattic/components';
+import { Button, FormLabel, Tooltip } from '@automattic/components';
+import { Icon, warning } from '@wordpress/icons';
 import { addQueryArgs } from '@wordpress/url';
 import clsx from 'clsx';
 import emailValidator from 'email-validator';
 import { useTranslate } from 'i18n-calypso';
-import { ChangeEvent, useCallback, useEffect, useState } from 'react';
+import { ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { A4A_REFERRALS_DASHBOARD } from 'calypso/a8c-for-agencies/components/sidebar-menu/lib/constants';
 import { REFERRAL_EMAIL_QUERY_PARAM_KEY } from 'calypso/a8c-for-agencies/constants';
 import FormFieldset from 'calypso/components/forms/form-fieldset';
 import FormTextInput from 'calypso/components/forms/form-text-input';
 import FormTextarea from 'calypso/components/forms/form-textarea';
-import { useDispatch } from 'calypso/state';
+import { useDispatch, useSelector } from 'calypso/state';
 import { recordTracksEvent } from 'calypso/state/analytics/actions';
+import { getCurrentUser } from 'calypso/state/current-user/selectors';
+import { errorNotice } from 'calypso/state/notices/actions';
+import MissingPaymentSettingsNotice from '../../referrals/common/missing-payment-settings-notice';
+import useGetTipaltiPayee from '../../referrals/hooks/use-get-tipalti-payee';
 import withMarketplaceType, {
 	MARKETPLACE_TYPE_SESSION_STORAGE_KEY,
 	MARKETPLACE_TYPE_REGULAR,
 } from '../hoc/with-marketplace-type';
 import useRequestClientPaymentMutation from '../hooks/use-request-client-payment-mutation';
 import useShoppingCart from '../hooks/use-shopping-cart';
+import NoticeSummary from './notice-summary';
 import type { ShoppingCartItem } from '../types';
 
 interface Props {
@@ -32,9 +38,18 @@ function RequestClientPayment( { checkoutItems }: Props ) {
 	const translate = useTranslate();
 	const dispatch = useDispatch();
 
+	const user = useSelector( getCurrentUser );
+
+	const isUserUnverified = ! user?.email_verified;
+
 	const [ email, setEmail ] = useState( '' );
 	const [ message, setMessage ] = useState( '' );
 	const [ validationError, setValidationError ] = useState< ValidationState >( {} );
+	const [ tipaltiActionRequiredVisible, setTipaltiActionRequiredVisible ] = useState( false );
+
+	const ctaButtonRef = useRef< HTMLButtonElement >( null );
+
+	const [ showVerifyAccountToolip, setShowVerifyAccountToolip ] = useState( false );
 
 	const { onClearCart } = useShoppingCart();
 
@@ -53,9 +68,26 @@ function RequestClientPayment( { checkoutItems }: Props ) {
 
 	const hasCompletedForm = !! email && !! message;
 
-	const learnMoreLink = 'https://agencieshelp.automattic.com/knowledge-base/billing-and-payments';
-
 	const productIds = checkoutItems.map( ( item ) => item.product_id ).join( ',' );
+
+	const licenses = useMemo(
+		() =>
+			checkoutItems
+				.filter( ( item ) => item.licenseId )
+				.map( ( item ) => ( {
+					product_id: item.product_id,
+					license_id: item.licenseId as number,
+				} ) ),
+		[ checkoutItems ]
+	);
+
+	const { data: tipaltiData } = useGetTipaltiPayee();
+
+	useEffect( () => {
+		if ( tipaltiData && ! tipaltiData.IsPayable ) {
+			setTipaltiActionRequiredVisible( true );
+		}
+	}, [ tipaltiData ] );
 
 	const handleRequestPayment = useCallback( () => {
 		if ( ! hasCompletedForm ) {
@@ -68,12 +100,48 @@ function RequestClientPayment( { checkoutItems }: Props ) {
 		dispatch(
 			recordTracksEvent( 'calypso_a4a_marketplace_referral_checkout_request_payment_click' )
 		);
-		requestPayment( { client_email: email, client_message: message, product_ids: productIds } );
-	}, [ dispatch, email, hasCompletedForm, message, productIds, requestPayment, translate ] );
-
-	const onClickLearnMore = useCallback( () => {
-		dispatch( recordTracksEvent( 'calypso_a4a_marketplace_referral_checkout_learn_more_click' ) );
-	}, [ dispatch ] );
+		requestPayment(
+			{
+				client_email: email,
+				client_message: message,
+				product_ids: productIds,
+				licenses: licenses,
+			},
+			{
+				onError: ( error ) => {
+					dispatch(
+						errorNotice(
+							error.code === 'cannot_refer_to_client'
+								? translate(
+										'Referring products to your own company is not allowed and against our {{a}}terms of service{{/a}}.',
+										{
+											components: {
+												a: (
+													<a
+														href="https://automattic.com/for-agencies/program-incentives/"
+														target="_blank"
+														rel="noopener noreferrer"
+													/>
+												),
+											},
+										}
+								  )
+								: error.message
+						)
+					);
+				},
+			}
+		);
+	}, [
+		dispatch,
+		email,
+		hasCompletedForm,
+		licenses,
+		message,
+		productIds,
+		requestPayment,
+		translate,
+	] );
 
 	useEffect( () => {
 		if ( isSuccess && !! email ) {
@@ -89,6 +157,13 @@ function RequestClientPayment( { checkoutItems }: Props ) {
 
 	return (
 		<>
+			{ tipaltiActionRequiredVisible && (
+				<div className="checkout__tipalti-action-required-notice">
+					<MissingPaymentSettingsNotice
+						onClose={ () => setTipaltiActionRequiredVisible( false ) }
+					/>
+				</div>
+			) }
 			<div className="checkout__client-referral-form">
 				<FormFieldset>
 					<FormLabel htmlFor="email">{ translate( 'Client’s email address' ) }</FormLabel>
@@ -100,6 +175,7 @@ function RequestClientPayment( { checkoutItems }: Props ) {
 						onClick={ () =>
 							dispatch( recordTracksEvent( 'calypso_a4a_client_referral_form_email_click' ) )
 						}
+						disabled={ ! tipaltiData?.IsPayable }
 					/>
 					<div
 						className={ clsx( 'checkout__client-referral-form-footer-error', {
@@ -121,33 +197,56 @@ function RequestClientPayment( { checkoutItems }: Props ) {
 						onClick={ () =>
 							dispatch( recordTracksEvent( 'calypso_a4a_client_referral_form_message_click' ) )
 						}
+						disabled={ ! tipaltiData?.IsPayable }
 					/>
 				</FormFieldset>
 			</div>
-			<div className="checkout__aside-actions">
+
+			<NoticeSummary type="request-client-payment" />
+
+			<div
+				className="checkout__aside-actions"
+				role="button"
+				tabIndex={ 0 }
+				onMouseEnter={ () => setShowVerifyAccountToolip( true ) }
+				onMouseLeave={ () => setShowVerifyAccountToolip( false ) }
+				onTouchStart={ () => setShowVerifyAccountToolip( true ) }
+			>
 				<Button
+					ref={ ctaButtonRef }
 					primary
 					onClick={ handleRequestPayment }
-					disabled={ ! hasCompletedForm }
+					disabled={ ! hasCompletedForm || isUserUnverified }
 					busy={ isPending }
 				>
 					{ translate( 'Request payment from client' ) }
+					{ isUserUnverified && <Icon icon={ warning } /> }
 				</Button>
+
+				<Tooltip
+					className="checkout__verify-account-tooltip"
+					context={ ctaButtonRef.current }
+					isVisible={ showVerifyAccountToolip && isUserUnverified }
+					position="bottom"
+				>
+					{ translate(
+						"Please verify your {{a}}account's email{{/a}} in order to begin referring products to clients.",
+						{
+							components: {
+								a: <a href="https://wordpress.com/me" target="_blank" rel="noopener noreferrer" />,
+							},
+						}
+					) }
+				</Tooltip>
 			</div>
 
-			<div className="checkout__summary-notice margin-top">
+			<div className="checkout__summary-notice-item">
 				{ translate(
-					'The client will be billed at the end of every month. The first month may be less than the above amount. {{a}}Learn more{{/a}}',
+					'{{b}}Important:{{/b}} Your referral order link is only valid for {{u}}12 hours{{/u}}. Please notify your client to complete the payment within this timeframe to avoid expiration.',
 					{
 						components: {
-							a: (
-								<a
-									href={ learnMoreLink }
-									target="_blank"
-									rel="noopener noreferrer"
-									onClick={ onClickLearnMore }
-								/>
-							),
+							b: <b />,
+							u: <u />,
 						},
 					}
 				) }

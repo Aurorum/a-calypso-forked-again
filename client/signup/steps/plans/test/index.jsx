@@ -1,6 +1,5 @@
 /** @jest-environment jsdom */
 jest.mock( 'calypso/signup/step-wrapper', () => () => <div data-testid="step-wrapper" /> );
-jest.mock( 'calypso/components/data/query-plans', () => 'query-plans' );
 jest.mock( 'calypso/components/marketing-message', () => 'marketing-message' );
 jest.mock( 'calypso/lib/wp', () => ( { req: { post: () => {} } } ) );
 
@@ -24,7 +23,7 @@ import {
 	PLAN_JETPACK_BUSINESS,
 	PLAN_JETPACK_BUSINESS_MONTHLY,
 } from '@automattic/calypso-products';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { PlansStep, isDotBlogDomainRegistration } from '../index';
 
 const noop = () => {};
@@ -49,9 +48,9 @@ function getCartItems( overrides ) {
 }
 
 describe( 'Plans basic tests', () => {
-	test( 'should not blow up and have proper CSS class', () => {
+	test( 'should not blow up and have proper CSS class', async () => {
 		render( <PlansStep { ...props } /> );
-		const stepWrapper = screen.getByTestId( 'step-wrapper' );
+		const stepWrapper = await waitFor( () => screen.getByTestId( 'step-wrapper' ) );
 		expect( stepWrapper ).toBeVisible();
 		expect( stepWrapper.parentNode ).toHaveClass( 'plans-step' );
 	} );

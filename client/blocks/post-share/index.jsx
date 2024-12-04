@@ -136,8 +136,8 @@ class PostShare extends Component {
 		this.setState( { scheduledDate: date } );
 	};
 
-	skipConnection( { keyring_connection_ID } ) {
-		return this.state.skipped.indexOf( keyring_connection_ID ) === -1;
+	skipConnection( { ID } ) {
+		return this.state.skipped.indexOf( ID ) === -1;
 	}
 
 	isConnectionActive = ( connection ) =>
@@ -173,7 +173,7 @@ class PostShare extends Component {
 	sharePost = () => {
 		const { postId, siteId, connections, isJetpack } = this.props;
 		const servicesToPublish = connections.filter(
-			( connection ) => this.state.skipped.indexOf( connection.keyring_connection_ID ) === -1
+			( connection ) => this.state.skipped.indexOf( connection.ID ) === -1
 		);
 		//Let's prepare array of service stats for tracks.
 		const numberOfAccountsPerService = servicesToPublish.reduce(
@@ -376,7 +376,7 @@ class PostShare extends Component {
 			<div>
 				{ brokenConnections.map( ( connection ) => (
 					<Notice
-						key={ connection.keyring_connection_ID }
+						key={ connection.ID }
 						status="is-warning"
 						showDismiss={ false }
 						text={ translate( 'There is an issue connecting to %s.', { args: connection.label } ) }
@@ -388,13 +388,13 @@ class PostShare extends Component {
 				) ) }
 				{ invalidConnections.map( ( connection ) => (
 					<Notice
-						key={ connection.keyring_connection_ID }
+						key={ connection.ID }
 						status="is-error"
 						showDismiss={ false }
 						text={
 							connection.service === 'facebook'
 								? translate( 'Connections to Facebook profiles ceased to work on August 1st.' )
-								: translate( 'Connections to %s have a permenant issue which prevents sharing.', {
+								: translate( 'Connections to %s have a permanent issue which prevents sharing.', {
 										args: connection.label,
 								  } )
 						}
@@ -502,7 +502,7 @@ class PostShare extends Component {
 	}
 
 	renderPrimarySection() {
-		const { hasFetchedConnections, hasRepublicizeFeature, siteSlug } = this.props;
+		const { hasFetchedConnections, hasRepublicizeFeature, siteSlug, siteId } = this.props;
 
 		if ( ! hasFetchedConnections ) {
 			return null;
@@ -515,7 +515,7 @@ class PostShare extends Component {
 		if ( ! hasRepublicizeFeature ) {
 			return (
 				<div>
-					<UpgradeToPremiumNudge { ...this.props } />
+					<UpgradeToPremiumNudge siteId={ siteId } />
 					<ActionsList { ...this.props } />
 				</div>
 			);
