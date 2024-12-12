@@ -60,7 +60,7 @@ class PurchasesList extends Component {
 			)
 			.map( ( site ) => site.slug );
 
-		if ( ! affectedSites ) {
+		if ( ! affectedSites.length ) {
 			return;
 		}
 
