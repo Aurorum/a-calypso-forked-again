@@ -227,7 +227,6 @@ const PlansFeaturesMain = ( {
 	const [ lastClickedPlan, setLastClickedPlan ] = useState< string | null >( null );
 	const [ showPlansComparisonGrid, setShowPlansComparisonGrid ] = useState( false );
 	const translate = useTranslate();
-	const storageAddOns = AddOns.useStorageAddOns( { siteId } );
 	const currentPlan = Plans.useCurrentPlan( { siteId } );
 
 	const eligibleForWpcomMonthlyPlans = useSelector( ( state: IAppState ) =>
@@ -340,9 +339,14 @@ const PlansFeaturesMain = ( {
 	const showEscapeHatch =
 		intentFromSiteMeta.intent && ! isInSignup && defaultWpcomPlansIntent !== intent;
 
-	const isTargetedSignupFlow = isInSignup && flowName === 'onboarding';
-	const isTargetedAdminIntent = ! isInSignup && intent === 'plans-default-wpcom';
-	const showSimplifiedFeatures = isTargetedSignupFlow || isTargetedAdminIntent;
+	/**
+	 * showSimplifiedFeatures should be true always and this variable should be removed.
+	 * It exists temporarily till the flows with the following intents are removed.
+	 */
+	const showSimplifiedFeatures = ! (
+		intent &&
+		[ 'plans-newsletter', 'plans-link-in-bio', 'plans-blog-onboarding' ].includes( intent )
+	);
 
 	const [ isLoadingHideLowerTierPlansExperiment, hideLowerTierPlansExperimentAssignment ] =
 		useExperiment( 'calypso_pricing_grid_hide_lower_tier_plans', {
@@ -406,6 +410,18 @@ const PlansFeaturesMain = ( {
 		hideEnterprisePlan,
 	};
 
+	const enableTermSavingsPriceDisplay = useEligibilityForTermSavingsPriceDisplay( {
+		selectedPlan,
+		hiddenPlans,
+		isSubdomainNotGenerated: ! resolvedSubdomainName.result,
+		term,
+		intent,
+		displayedIntervals: filteredDisplayedIntervals,
+		coupon,
+		siteId,
+		isInSignup,
+	} );
+
 	// we need all the plans that are available to pick for comparison grid (these should extend into plans-ui data store selectors)
 	const gridPlansForComparisonGrid = useGridPlansForComparisonGrid( {
 		allFeaturesList: getFeaturesList(),
@@ -420,11 +436,11 @@ const PlansFeaturesMain = ( {
 		selectedPlan,
 		showLegacyStorageFeature,
 		siteId,
-		storageAddOns,
 		term,
 		useCheckPlanAvailabilityForPurchase,
 		useFreeTrialPlanSlugs,
 		isDomainOnlySite,
+		reflectStorageSelectionInPlanPrices: ! enableTermSavingsPriceDisplay,
 	} );
 
 	// we need only the visible ones for features grid (these should extend into plans-ui data store selectors)
@@ -442,11 +458,11 @@ const PlansFeaturesMain = ( {
 		selectedPlan,
 		showLegacyStorageFeature,
 		siteId,
-		storageAddOns,
 		useCheckPlanAvailabilityForPurchase,
 		useFreeTrialPlanSlugs,
 		isDomainOnlySite,
 		term,
+		reflectStorageSelectionInPlanPrices: ! enableTermSavingsPriceDisplay,
 	} );
 
 	// when `deemphasizeFreePlan` is enabled, the Free plan will be presented as a CTA link instead of a plan card in the features grid.
@@ -755,15 +771,6 @@ const PlansFeaturesMain = ( {
 		</div>
 	);
 
-	const enableTermSavingsPriceDisplay = useEligibilityForTermSavingsPriceDisplay( {
-		gridPlans: gridPlansForFeaturesGrid ?? [],
-		displayedIntervals: filteredDisplayedIntervals,
-		storageAddOns,
-		coupon,
-		siteId,
-		isInSignup,
-	} );
-
 	return (
 		<>
 			<div className={ clsx( 'plans-features-main', 'is-pricing-grid-2023-plans-features-main' ) }>
@@ -863,6 +870,7 @@ const PlansFeaturesMain = ( {
 										onStorageAddOnClick={ handleStorageAddOnClick }
 										paidDomainName={ paidDomainName }
 										recordTracksEvent={ recordTracksEvent }
+										reflectStorageSelectionInPlanPrices={ ! enableTermSavingsPriceDisplay }
 										selectedFeature={ selectedFeature }
 										showLegacyStorageFeature={ showLegacyStorageFeature }
 										showRefundPeriod={ isAnyHostingFlow( flowName ) }
@@ -928,6 +936,7 @@ const PlansFeaturesMain = ( {
 															: undefined
 													}
 													recordTracksEvent={ recordTracksEvent }
+													reflectStorageSelectionInPlanPrices={ ! enableTermSavingsPriceDisplay }
 													selectedFeature={ selectedFeature }
 													selectedPlan={ selectedPlan }
 													showUpgradeableStorage={ showUpgradeableStorage }

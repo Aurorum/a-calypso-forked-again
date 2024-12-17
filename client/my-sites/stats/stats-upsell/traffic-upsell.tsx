@@ -12,14 +12,21 @@ const TrafficUpsell: React.FC = () => {
 			title={ translate( 'Unlock site growth analytics' ) }
 			features={ [
 				translate( 'View trends and data from any time period' ),
-				translate( 'Understand how visitors find and use your site' ),
-				translate( 'Track which posts and pages are most popular' ),
-				translate( 'See where your visitors come from worldwide' ),
-				translate( 'Discover which links generate most clicks' ),
-				translate( 'Monitor email engagement and downloads' ),
+				translate( 'Detailed stats about posts, referrers, clicks and more' ),
 				translate( 'Keep your data private and GDPR-compliant' ),
+				translate( '14-day money-back guarantee' ),
+				translate( '6 GB storage' ),
+				translate( 'Unlimited pages, posts, users, and visitors' ),
+				translate( 'Free domain for one year' ),
+				translate( 'Ad-free browsing experience for your visitors' ),
+				translate( 'Dozens of premium themes' ),
+				translate( 'Fast support from our expert team' ),
+				translate( 'Customize fonts and colors sitewide' ),
 			] }
 			image={ statsFeaturesPNG }
+			expandableView
+			mainFeatureLimit={ 4 }
+			expandText={ translate( 'Show all Personal features' ) }
 		/>
 	);
 };
