@@ -1,11 +1,6 @@
 @import "@wordpress/base-styles/breakpoints";
 @import "@wordpress/base-styles/mixins";
 
-.is-section-me.is-global-sidebar-visible .purchases__cancel.main,
-.is-section-me.is-global-sidebar-visible .purchases__cancel-domain.main {
-	height: calc(100vh - var(--masterbar-height) - var(--content-padding-top) - var(--content-padding-bottom));
-}
-
 .cancel-purchase__wrapper-card {
 	padding: 32px;
 	padding-top: 12px;
