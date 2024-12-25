@@ -1,13 +1,16 @@
-import { Button, Popover, Gridicon } from '@automattic/components';
+import { Popover } from '@automattic/components';
 import clsx from 'clsx';
 import { localize } from 'i18n-calypso';
+import { debounce } from 'lodash';
 import moment from 'moment';
 import PropTypes from 'prop-types';
 import { createRef, Component } from 'react';
 import { withLocalizedMoment } from 'calypso/components/localized-moment';
 import DateRangePicker from './date-range-picker';
+import DateRangeFooter from './footer';
 import DateRangeHeader from './header';
 import DateRangeInputs from './inputs';
+import Shortcuts from './shortcuts';
 import DateRangeTrigger from './trigger';
 
 import './style.scss';
@@ -43,8 +46,18 @@ export class DateRange extends Component {
 		showTriggerClear: PropTypes.bool,
 		renderTrigger: PropTypes.func,
 		renderHeader: PropTypes.func,
+		renderFooter: PropTypes.func,
 		renderInputs: PropTypes.func,
+		displayShortcuts: PropTypes.bool,
 		rootClass: PropTypes.string,
+		useArrowNavigation: PropTypes.bool,
+		overlay: PropTypes.node,
+		customTitle: PropTypes.string,
+		onShortcutClick: PropTypes.func,
+		// Temporary prop to enable new date filtering UI.
+		isNewDateFilteringEnabled: PropTypes.bool,
+		trackExternalDateChanges: PropTypes.bool,
+		shortcutList: PropTypes.array,
 	};
 
 	static defaultProps = {
@@ -55,8 +68,15 @@ export class DateRange extends Component {
 		showTriggerClear: true,
 		renderTrigger: ( props ) => <DateRangeTrigger { ...props } />,
 		renderHeader: ( props ) => <DateRangeHeader { ...props } />,
+		renderFooter: ( props ) => <DateRangeFooter { ...props } />,
 		renderInputs: ( props ) => <DateRangeInputs { ...props } />,
+		displayShortcuts: false,
 		rootClass: '',
+		useArrowNavigation: false,
+		overlay: null,
+		customTitle: '',
+		isNewDateFilteringEnabled: false,
+		trackExternalDateChanges: false,
 	};
 
 	constructor( props ) {
@@ -106,10 +126,24 @@ export class DateRange extends Component {
 			initialStartDate: startDate, // cache values in case we need to reset to them
 			initialEndDate: endDate, // cache values in case we need to reset to them
 			focusedMonth: this.props.focusedMonth,
+			numberOfMonths: this.getNumberOfMonths(),
 		};
 
 		// Ref to the Trigger <button> used to position the Popover component
 		this.triggerButtonRef = createRef();
+		this.throttledHandleResize = debounce( () => {
+			this.setState( {
+				numberOfMonths: this.getNumberOfMonths(),
+			} );
+		}, 250 );
+	}
+
+	componentDidMount() {
+		window.addEventListener( 'resize', this.throttledHandleResize );
+	}
+
+	componentWillUnmount() {
+		window.removeEventListener( 'resize', this.throttledHandleResize );
 	}
 
 	/**
@@ -117,9 +151,18 @@ export class DateRange extends Component {
 	 * Note this does not commit the current date state
 	 */
 	openPopover = () => {
-		this.setState( {
+		const newState = {
 			popoverVisible: true,
-		} );
+		};
+		if ( this.props.trackExternalDateChanges ) {
+			newState.startDate = this.props.selectedStartDate;
+			newState.endDate = this.props.selectedEndDate;
+			newState.textInputStartDate = this.toDateString( this.props.selectedStartDate );
+			newState.textInputEndDate = this.toDateString( this.props.selectedEndDate );
+			newState.staleStartDate = this.props.selectedStartDate;
+			newState.staleEndDate = this.props.selectedEndDate;
+		}
+		this.setState( newState );
 	};
 
 	/**
@@ -384,46 +427,18 @@ export class DateRange extends Component {
 	}
 
 	getNumberOfMonths() {
-		return window.matchMedia( '(min-width: 480px)' ).matches ? 2 : 1;
+		return window.matchMedia( '(min-width: 520px)' ).matches ? 2 : 1;
 	}
 
-	renderDateHelp() {
-		const { startDate, endDate } = this.state;
-
-		return (
-			<div className="date-range__info" role="status" aria-live="polite">
-				{ ! startDate &&
-					! endDate &&
-					this.props.translate( '{{icon/}} Please select the {{em}}first{{/em}} day.', {
-						components: {
-							icon: <Gridicon aria-hidden="true" icon="info" />,
-							em: <em />,
-						},
-					} ) }
-				{ startDate &&
-					! endDate &&
-					this.props.translate( '{{icon/}} Please select the {{em}}last{{/em}} day.', {
-						components: {
-							icon: <Gridicon aria-hidden="true" icon="info" />,
-							em: <em />,
-						},
-					} ) }
-				{ startDate && endDate && (
-					<Button
-						className="date-range__info-btn"
-						borderless
-						compact
-						onClick={ this.resetDates }
-						aria-label={ this.props.translate( 'Reset selected dates' ) }
-					>
-						{ this.props.translate( '{{icon/}} reset selected dates', {
-							components: { icon: <Gridicon aria-hidden="true" icon="cross-small" /> },
-						} ) }
-					</Button>
-				) }
-			</div>
-		);
-	}
+	handleDateRangeChange = ( startDate, endDate ) => {
+		this.setState( {
+			startDate,
+			endDate,
+			textInputStartDate: this.toDateString( startDate ),
+			textInputEndDate: this.toDateString( endDate ),
+		} );
+		this.props.onDateSelect && this.props.onDateSelect( startDate, endDate );
+	};
 
 	/**
 	 * Renders the Popover component
@@ -431,6 +446,13 @@ export class DateRange extends Component {
 	 */
 	renderPopover() {
 		const headerProps = {
+			customTitle: this.props.customTitle,
+			startDate: this.state.startDate,
+			endDate: this.state.endDate,
+			resetDates: this.resetDates,
+		};
+
+		const footerProps = {
 			onApplyClick: this.commitDates,
 			onCancelClick: this.closePopoverAndRevert,
 		};
@@ -443,41 +465,63 @@ export class DateRange extends Component {
 			onInputFocus: this.handleInputFocus,
 		};
 
-		const onDateRangeChange = ( startDate, endDate ) => {
-			this.setState( {
-				startDate,
-				endDate,
-				textInputStartDate: this.toDateString( startDate ),
-				textInputEndDate: this.toDateString( endDate ),
-			} );
-			this.props.onDateSelect && this.props.onDateSelect( startDate, endDate );
-		};
-
 		return (
 			<Popover
 				className="date-range__popover"
 				isVisible={ this.state.popoverVisible }
 				context={ this.triggerButtonRef.current }
 				position="bottom"
-				onClose={ this.closePopoverAndCommit }
+				onClose={ this.closePopover }
 			>
-				<div className="date-range__popover-inner">
-					<div className="date-range__controls">
+				<div className="date-range__popover-content">
+					<div
+						className={ clsx( 'date-range__popover-inner', {
+							'date-range__popover-inner__hasoverlay': !! this.props.overlay,
+						} ) }
+					>
+						{ this.props.overlay && (
+							<div className="date-range__popover-inner-overlay">{ this.props.overlay }</div>
+						) }
 						{ this.props.renderHeader( headerProps ) }
-						{ this.renderDateHelp() }
+						{ this.props.renderInputs( inputsProps ) }
+						{ this.renderDatePicker() }
+						{ this.props.renderFooter( footerProps ) }
 					</div>
-					{ this.props.renderInputs( inputsProps ) }
-					<DateRangePicker
-						firstSelectableDate={ this.props.firstSelectableDate }
-						lastSelectableDate={ this.props.lastSelectableDate }
-						selectedStartDate={ this.state.startDate }
-						selectedEndDate={ this.state.endDate }
-						onDateRangeChange={ onDateRangeChange }
-						focusedMonth={ this.state.focusedMonth }
-						numberOfMonths={ this.getNumberOfMonths() }
-					/>
+					{ /* Render shortcuts to the right of the calendar */ }
+					{ this.props.displayShortcuts && (
+						<div className="date-range-picker-shortcuts">
+							<Shortcuts
+								shortcutList={ this.props.shortcutList }
+								onClick={ this.handleDateRangeChange }
+								locked={ !! this.props.overlay }
+								startDate={ this.state.startDate }
+								endDate={ this.state.endDate }
+								onShortcutClick={ this.props.onShortcutClick } // for tracking shortcut clicks
+								isNewDateFilteringEnabled={ this.props.isNewDateFilteringEnabled }
+							/>
+						</div>
+					) }
 				</div>
 			</Popover>
+		);
+	}
+
+	/**
+	 * Renders the DatePicker component
+	 * @returns {import('react').Element} the DatePicker component
+	 */
+	renderDatePicker() {
+		return (
+			<DateRangePicker
+				firstSelectableDate={ this.props.firstSelectableDate }
+				lastSelectableDate={ this.props.lastSelectableDate }
+				selectedStartDate={ this.state.startDate }
+				selectedEndDate={ this.state.endDate }
+				onDateRangeChange={ this.handleDateRangeChange }
+				focusedMonth={ this.state.focusedMonth }
+				numberOfMonths={ this.state.numberOfMonths }
+				useArrowNavigation={ this.props.useArrowNavigation }
+			/>
 		);
 	}
 

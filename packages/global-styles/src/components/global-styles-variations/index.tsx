@@ -1,4 +1,5 @@
-import { PLAN_PREMIUM, getPlan } from '@automattic/calypso-products';
+import { isEnabled } from '@automattic/calypso-config';
+import { PLAN_PREMIUM, getPlan, PLAN_PERSONAL } from '@automattic/calypso-products';
 import { PremiumBadge } from '@automattic/components';
 import { useHasEnTranslation } from '@automattic/i18n-utils';
 import { useState } from '@wordpress/element';
@@ -105,10 +106,16 @@ const GlobalStylesVariations = ( {
 }: GlobalStylesVariationsProps ) => {
 	const hasEnTranslation = useHasEnTranslation();
 	const isRegisteredCoreBlocks = useRegisterCoreBlocks();
-	const premiumStylesDescription = translate(
-		'Unlock style variations and tons of other features with the %(planName)s plan, or try them out now for free.',
-		{ args: { planName: getPlan( PLAN_PREMIUM )?.getTitle() ?? '' } }
-	);
+	const upgradeToPlan = isEnabled( 'global-styles/on-personal-plan' )
+		? PLAN_PERSONAL
+		: PLAN_PREMIUM;
+
+	const variationDescription = needsUpgrade
+		? translate(
+				'Unlock style variations and tons of other features with the %(planName)s plan, or try them out now for free.',
+				{ args: { planName: getPlan( upgradeToPlan )?.getTitle() ?? '' } }
+		  )
+		: translate( 'You can change your style at any time.' );
 
 	const baseGlobalStyles = useMemo(
 		() =>
@@ -125,7 +132,7 @@ const GlobalStylesVariations = ( {
 		[ globalStylesVariations ]
 	);
 
-	const nonDefaultStylesDescription = description ?? premiumStylesDescription;
+	const nonDefaultStylesDescription = description ?? variationDescription;
 	const nonDefaultStyles = globalStylesVariationsWithoutDefault.map(
 		( globalStylesVariation, index ) => (
 			<GlobalStylesVariation
@@ -195,11 +202,13 @@ const GlobalStylesVariations = ( {
 												count: nonDefaultStyles.length,
 										  } ) }
 								</span>
-								<PremiumBadge
-									shouldHideTooltip
-									shouldCompactWithAnimation
-									labelText={ translate( 'Upgrade' ) }
-								/>
+								{ needsUpgrade && (
+									<PremiumBadge
+										shouldHideTooltip
+										shouldCompactWithAnimation
+										labelText={ translate( 'Upgrade' ) }
+									/>
+								) }
 							</h2>
 							<p>{ nonDefaultStylesDescription }</p>
 						</div>

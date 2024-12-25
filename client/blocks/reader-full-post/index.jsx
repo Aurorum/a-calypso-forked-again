@@ -15,6 +15,7 @@ import DailyPostButton from 'calypso/blocks/daily-post-button';
 import { isDailyPostChallengeOrPrompt } from 'calypso/blocks/daily-post-button/helper';
 import PostEditButton from 'calypso/blocks/post-edit-button';
 import ReaderFeaturedImage from 'calypso/blocks/reader-featured-image';
+import { scrollToComments } from 'calypso/blocks/reader-full-post/scroll-to-comments';
 import WPiFrameResize from 'calypso/blocks/reader-full-post/wp-iframe-resize';
 import ReaderPostActions from 'calypso/blocks/reader-post-actions';
 import ReaderSuggestedFollowsDialog from 'calypso/blocks/reader-suggested-follows/dialog';
@@ -32,7 +33,6 @@ import {
 	RelatedPostsFromOtherSites,
 } from 'calypso/components/related-posts';
 import { isFeaturedImageInContent } from 'calypso/lib/post-normalizer/utils';
-import scrollTo from 'calypso/lib/scroll-to';
 import ReaderCommentIcon from 'calypso/reader/components/icons/comment-icon';
 import ReaderMain from 'calypso/reader/components/reader-main';
 import { canBeMarkedAsSeen, getSiteName, isEligibleForUnseen } from 'calypso/reader/get-helpers';
@@ -93,6 +93,7 @@ export class FullPostView extends Component {
 		referralStream: PropTypes.string,
 		isWPForTeamsItem: PropTypes.bool,
 		hasOrganization: PropTypes.bool,
+		layout: PropTypes.oneOf( [ 'default', 'recent' ] ),
 	};
 
 	hasScrolledToCommentAnchor = false;
@@ -102,6 +103,8 @@ export class FullPostView extends Component {
 
 	state = {
 		isSuggestedFollowsModalOpen: false,
+		maxScrollDepth: 0, // Track the maximum scroll depth achieved
+		hasCompleted: false, // Track whether the user completed the post
 	};
 
 	openSuggestedFollowsModal = ( followClicked ) => {
@@ -115,6 +118,7 @@ export class FullPostView extends Component {
 		// Send page view
 		this.hasSentPageView = false;
 		this.hasLoaded = false;
+		this.setReadingStartTime();
 		this.attemptToSendPageView();
 		this.maybeDisableAppBanner();
 
@@ -132,6 +136,17 @@ export class FullPostView extends Component {
 		document.querySelector( 'body' ).classList.add( 'is-reader-full-post' );
 
 		document.addEventListener( 'keydown', this.handleKeydown, true );
+
+		document.addEventListener( 'visibilitychange', this.handleVisibilityChange );
+
+		const scrollableContainer =
+			document.querySelector( '#primary > div > div.recent-feed > section' ) || // for Recent Feed in Dataview
+			document.querySelector( '#primary > div > div' ); // for Recent Feed in Stream
+		if ( scrollableContainer ) {
+			scrollableContainer.addEventListener( 'scroll', this.setScrollDepth );
+			this.scrollableContainer = scrollableContainer; // Save reference for cleanup
+			this.resetScroll();
+		}
 	}
 	componentDidUpdate( prevProps ) {
 		// Send page view if applicable
@@ -144,6 +159,15 @@ export class FullPostView extends Component {
 			this.hasLoaded = false;
 			this.attemptToSendPageView();
 			this.maybeDisableAppBanner();
+
+			// If the post being viewed changes, track the reading time.
+			if ( get( prevProps, 'post.ID' ) !== get( this.props, 'post.ID' ) ) {
+				this.trackReadingTime( prevProps.post );
+				this.trackScrollDepth( prevProps.post );
+				this.trackExitBeforeCompletion( prevProps.post );
+				this.setReadingStartTime();
+				this.resetScroll();
+			}
 		}
 
 		if ( this.props.shouldShowComments && ! prevProps.shouldShowComments ) {
@@ -171,8 +195,19 @@ export class FullPostView extends Component {
 		this.stopResize?.();
 		this.props.enableAppBanner(); // reset the app banner
 		document.querySelector( 'body' ).classList.remove( 'is-reader-full-post' );
+		this.trackReadingTime();
 		document.removeEventListener( 'keydown', this.handleKeydown, true );
+		document.removeEventListener( 'visibilitychange', this.handleVisibilityChange );
+
+		if ( this.scrollableContainer ) {
+			this.scrollableContainer.removeEventListener( 'scroll', this.setScrollDepth );
+		}
+		this.clearResetScrollTimeout();
 	}
+
+	setReadingStartTime = () => {
+		this.readingStartTime = new Date().getTime();
+	};
 
 	handleKeydown = ( event ) => {
 		if ( this.props.notificationsOpen ) {
@@ -212,6 +247,126 @@ export class FullPostView extends Component {
 		}
 	};
 
+	handleVisibilityChange = () => {
+		if ( document.hidden ) {
+			this.trackReadingTime();
+			this.trackScrollDepth();
+			this.trackExitBeforeCompletion();
+			this.resetScroll();
+		}
+	};
+
+	trackReadingTime( post = null ) {
+		if ( ! post ) {
+			post = this.props.post;
+		}
+		if ( this.readingStartTime && post.ID ) {
+			const endTime = Math.floor( Date.now() );
+			const engagementTime = endTime - this.readingStartTime;
+			recordTrackForPost( 'calypso_reader_article_engaged_time', post, {
+				context: 'full-post',
+				engagement_time: engagementTime / 1000,
+			} );
+			// check if the user exited early
+			this.checkFastExit( post, engagementTime );
+		}
+	}
+
+	clearResetScrollTimeout = () => {
+		if ( this.resetScrollTimeout ) {
+			clearTimeout( this.resetScrollTimeout );
+			this.resetScrollTimeout = null;
+		}
+	};
+
+	resetScroll = () => {
+		this.clearResetScrollTimeout();
+		this.resetScrollTimeout = setTimeout( () => {
+			if ( this.scrollableContainer ) {
+				this.scrollableContainer.scrollTo( {
+					top: 0,
+					left: 0,
+					behavior: 'instant',
+				} );
+			}
+			this.setState( { maxScrollDepth: 0, hasCompleted: false } );
+		}, 0 ); // Defer until after the DOM update
+	};
+
+	setScrollDepth = () => {
+		if ( this.scrollableContainer ) {
+			const scrollTop = this.scrollableContainer.scrollTop;
+			const scrollHeight = this.scrollableContainer.scrollHeight;
+			const clientHeight = this.scrollableContainer.clientHeight;
+			const scrollDepth = ( scrollTop / ( scrollHeight - clientHeight ) ) * 100;
+			this.setState( ( prevState ) => ( {
+				maxScrollDepth: Math.max( prevState.maxScrollDepth, scrollDepth ) || 0,
+				hasCompleted: prevState.hasCompleted || scrollDepth >= 90,
+			} ) );
+		}
+	};
+
+	trackScrollDepth = ( post = null ) => {
+		const { maxScrollDepth } = this.state;
+		if ( ! post ) {
+			post = this.props.post;
+		}
+
+		if ( this.scrollableContainer && post.ID ) {
+			const roundedDepth = Math.round( maxScrollDepth * 100 ) / 100;
+			recordTrackForPost( 'calypso_reader_article_scroll_depth', post, {
+				context: 'full-post',
+				scroll_depth: roundedDepth,
+			} );
+		}
+	};
+
+	trackExitBeforeCompletion = ( post = null ) => {
+		const { hasCompleted, maxScrollDepth } = this.state;
+		if ( ! post ) {
+			post = this.props.post;
+		}
+
+		if ( this.scrollableContainer && post.ID && ! hasCompleted ) {
+			recordTrackForPost( 'calypso_reader_article_exit_before_completion', post, {
+				context: 'full-post',
+				scroll_depth: maxScrollDepth,
+			} );
+		}
+	};
+
+	trackFastExit = ( post, elapsedSeconds, fastExitThreshold ) => {
+		recordTrackForPost( 'calypso_reader_article_fast_exit', post, {
+			context: 'full-post',
+			estimated_reading_time: post.minutes_to_read,
+			elapsed_seconds: elapsedSeconds,
+			fast_exit_threshold: fastExitThreshold,
+		} );
+	};
+
+	checkFastExit = ( post = null, engagementTime ) => {
+		if ( ! post ) {
+			post = this.props.post;
+		}
+
+		if (
+			! this.readingStartTime ||
+			! post?.ID ||
+			! post?.minutes_to_read ||
+			post?.minutes_to_read === 0
+		) {
+			return;
+		}
+
+		const elapsedSeconds = engagementTime / 1000;
+		const estimatedSecondsToRead = post.minutes_to_read * 60;
+		const fastExitThreshold = estimatedSecondsToRead * 0.25; // Define a "fast exit" as 25% of estimated time
+
+		if ( elapsedSeconds < fastExitThreshold ) {
+			this.trackFastExit( post, elapsedSeconds, fastExitThreshold );
+		}
+	};
+
 	handleBack = ( event ) => {
 		event.preventDefault();
 		this.props.onClose && this.props.onClose();
@@ -221,7 +376,7 @@ export class FullPostView extends Component {
 		recordAction( 'click_comments' );
 		recordGaEvent( 'Clicked Post Comment Button' );
 		recordTrackForPost( 'calypso_reader_full_post_comments_button_clicked', this.props.post );
-		this.scrollToComments();
+		this.scrollToComments( { focusTextArea: true } );
 	};
 
 	handleLike = () => {
@@ -285,41 +440,22 @@ export class FullPostView extends Component {
 			: undefined;
 
 	// Scroll to the top of the comments section.
-	scrollToComments = () => {
-		if ( ! this.props.post ) {
-			return;
-		}
-		if ( this.props.post._state ) {
-			return;
-		}
-		if ( this._scrolling ) {
+	scrollToComments = ( { focusTextArea = false } = {} ) => {
+		if ( ! this.props.post || this.props.post._state || this._scrolling ) {
 			return;
 		}
 
 		this._scrolling = true;
-		setTimeout( () => {
-			const commentsNode = this.commentsWrapper.current;
-			if ( commentsNode && commentsNode.offsetTop ) {
-				scrollTo( {
-					x: 0,
-					container: this.readerMainWrapper.current,
-					y: commentsNode.offsetTop - 48,
-					duration: 300,
-					onComplete: () => {
-						// check to see if the comment node moved while we were scrolling
-						// and scroll to the end position
-						const commentsNodeAfterScroll = this.commentsWrapper.current;
-						if ( commentsNodeAfterScroll && commentsNodeAfterScroll.offsetTop ) {
-							window.scrollTo( 0, commentsNodeAfterScroll.offsetTop - 48 );
-						}
-						this._scrolling = false;
-					},
-				} );
+		scrollToComments( {
+			focusTextArea,
+			container: this.readerMainWrapper.current,
+			onScrollComplete: () => {
+				this._scrolling = false;
 				if ( this.hasCommentAnchor ) {
 					this.hasScrolledToCommentAnchor = true;
 				}
-			}
-		}, 0 );
+			},
+		} );
 	};
 
 	attemptToSendPageView = () => {
@@ -463,9 +599,10 @@ export class FullPostView extends Component {
 			return <ReaderFullPostUnavailable post={ post } onBackClick={ this.handleBack } />;
 		}
 
+		const isDefaultLayout = this.props.layout !== 'recent';
 		const siteName = getSiteName( { site, post } );
 		const classes = { 'reader-full-post': true };
-		const showRelatedPosts = post && ! post.is_external && post.site_ID;
+		const showRelatedPosts = post && ! post.is_external && post.site_ID && isDefaultLayout;
 		const relatedPostsFromOtherSitesTitle = translate(
 			'More on {{wpLink}}WordPress.com{{/wpLink}}',
 			{
@@ -489,7 +626,6 @@ export class FullPostView extends Component {
 		const commentCount = get( post, 'discussion.comment_count' );
 		const postKey = { blogId, feedId, postId };
 		const contentWidth = readerContentWidth();
-
 		const feedIcon = feed ? feed.site_icon ?? get( feed, 'image' ) : null;
 
 		/*eslint-disable react/no-danger */
@@ -510,7 +646,10 @@ export class FullPostView extends Component {
 					) }
 					{ referral && ! referralPost && <QueryReaderPost postKey={ referral } /> }
 					{ ! post || ( isLoading && <QueryReaderPost postKey={ postKey } /> ) }
-					<BackButton onClick={ this.handleBack } />
+					<BackButton
+						onClick={ this.handleBack }
+						aria-label={ translate( 'Return to the list of posts.' ) }
+					/>
 					<div className="reader-full-post__visit-site-container">
 						<ExternalLink
 							icon
@@ -524,62 +663,65 @@ export class FullPostView extends Component {
 						</ExternalLink>
 					</div>
 					<div className="reader-full-post__content">
-						<div className="reader-full-post__sidebar">
-							{ isLoading && <AuthorCompactProfile author={ null } /> }
-							{ ! isLoading && post.author && (
-								<AuthorCompactProfile
-									author={ post.author }
-									siteIcon={ get( site, 'icon.img' ) }
-									feedIcon={ feedIcon }
-									siteName={ siteName }
-									siteUrl={ post.site_URL }
-									feedUrl={ get( post, 'feed_URL' ) }
-									followCount={ site && site.subscribers_count }
-									onFollowToggle={ this.openSuggestedFollowsModal }
-									feedId={ +post.feed_ID }
-									siteId={ +post.site_ID }
-									post={ post }
-								/>
-							) }
-							<div className="reader-full-post__sidebar-comment-like">
-								{ userCan( 'edit_post', post ) && (
-									<PostEditButton
-										post={ post }
-										site={ site }
-										iconSize={ 20 }
-										onClick={ this.onEditClick }
-									/>
-								) }
-
-								{ shouldShowComments( post ) && (
-									<CommentButton
-										key="comment-button"
-										commentCount={ commentCount }
-										onClick={ this.handleCommentClick }
-										tagName="div"
-										icon={ ReaderCommentIcon( { iconSize: 20 } ) }
-									/>
-								) }
-
-								{ shouldShowLikes( post ) && (
-									<LikeButton
+						{ isDefaultLayout && (
+							<div className="reader-full-post__sidebar">
+								{ isLoading && <AuthorCompactProfile author={ null } /> }
+								{ ! isLoading && (
+									<AuthorCompactProfile
+										author={ post.author }
+										siteIcon={ get( site, 'icon.img' ) }
+										feedIcon={ feedIcon }
+										siteName={ siteName }
+										siteUrl={ post.site_URL }
+										feedUrl={ get( post, 'feed_URL' ) }
+										followCount={ site && site.subscribers_count }
+										onFollowToggle={ this.openSuggestedFollowsModal }
+										feedId={ +post.feed_ID }
 										siteId={ +post.site_ID }
-										postId={ +post.ID }
-										fullPost
-										tagName="div"
-										likeSource="reader"
+										post={ post }
 									/>
 								) }
+								<div className="reader-full-post__sidebar-comment-like">
+									{ userCan( 'edit_post', post ) && (
+										<PostEditButton
+											post={ post }
+											site={ site }
+											iconSize={ 20 }
+											onClick={ this.onEditClick }
+										/>
+									) }
 
-								{ isEligibleForUnseen( { isWPForTeamsItem, hasOrganization } ) &&
-									canBeMarkedAsSeen( { post } ) &&
-									this.renderMarkAsSenButton() }
+									{ shouldShowComments( post ) && (
+										<CommentButton
+											key="comment-button"
+											commentCount={ commentCount }
+											onClick={ this.handleCommentClick }
+											tagName="div"
+											icon={ ReaderCommentIcon( { iconSize: 20 } ) }
+										/>
+									) }
+
+									{ shouldShowLikes( post ) && (
+										<LikeButton
+											siteId={ +post.site_ID }
+											postId={ +post.ID }
+											fullPost
+											tagName="div"
+											likeSource="reader"
+										/>
+									) }
+
+									{ isEligibleForUnseen( { isWPForTeamsItem, hasOrganization } ) &&
+										canBeMarkedAsSeen( { post } ) &&
+										this.renderMarkAsSenButton() }
+								</div>
 							</div>
-						</div>
+						) }
 						<article className="reader-full-post__story">
 							<ReaderFullPostHeader
 								post={ post }
 								referralPost={ referralPost }
+								layout={ this.props.layout }
 								authorProfile={
 									<AuthorCompactProfile
 										author={ post.author }
@@ -635,6 +777,24 @@ export class FullPostView extends Component {
 
 							{ ! isLoading && <ReaderPerformanceTrackerStop /> }
 
+							<div className="reader-full-post__comments-wrapper" ref={ this.commentsWrapper }>
+								{ shouldShowComments( post ) && (
+									<Comments
+										showNestingReplyArrow
+										post={ post }
+										initialSize={ startingCommentId ? commentCount : 10 }
+										pageSize={ 25 }
+										startingCommentId={ startingCommentId }
+										commentCount={ commentCount }
+										maxDepth={ 1 }
+										commentsFilterDisplay={ COMMENTS_FILTER_ALL }
+										showConversationFollowButton
+										shouldPollForNewComments={ config.isEnabled( 'reader/comment-polling' ) }
+										shouldHighlightNew
+									/>
+								) }
+							</div>
+
 							{ showRelatedPosts && (
 								<RelatedPostsFromSameSite
 									siteId={ +post.site_ID }
@@ -659,24 +819,6 @@ export class FullPostView extends Component {
 									onPostClick={ this.handleRelatedPostFromSameSiteClicked }
 								/>
 							) }
-
-							<div className="reader-full-post__comments-wrapper" ref={ this.commentsWrapper }>
-								{ shouldShowComments( post ) && (
-									<Comments
-										showNestingReplyArrow
-										post={ post }
-										initialSize={ startingCommentId ? commentCount : 10 }
-										pageSize={ 25 }
-										startingCommentId={ startingCommentId }
-										commentCount={ commentCount }
-										maxDepth={ 1 }
-										commentsFilterDisplay={ COMMENTS_FILTER_ALL }
-										showConversationFollowButton
-										shouldPollForNewComments={ config.isEnabled( 'reader/comment-polling' ) }
-										shouldHighlightNew
-									/>
-								) }
-							</div>
 
 							{ showRelatedPosts && (
 								<RelatedPostsFromOtherSites

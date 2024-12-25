@@ -1,20 +1,24 @@
+import { isEnabled } from '@automattic/calypso-config';
 import page from '@automattic/calypso-router';
-import { Button } from '@automattic/components';
+import { Button, SearchableDropdown } from '@automattic/components';
 import { TextareaControl, TextControl, ToggleControl } from '@wordpress/components';
 import { useTranslate } from 'i18n-calypso';
 import { useCallback } from 'react';
+import { A4AFeedback } from 'calypso/a8c-for-agencies/components/a4a-feedback';
+import useShowFeedback from 'calypso/a8c-for-agencies/components/a4a-feedback/hooks/use-show-a4a-feedback';
 import Form from 'calypso/a8c-for-agencies/components/form';
 import FormField from 'calypso/a8c-for-agencies/components/form/field';
 import validateEmail from 'calypso/a8c-for-agencies/components/form/hoc/with-error-handling/validators/email';
 import validateNonEmpty from 'calypso/a8c-for-agencies/components/form/hoc/with-error-handling/validators/non-empty';
 import validateUrl from 'calypso/a8c-for-agencies/components/form/hoc/with-error-handling/validators/url';
 import FormSection from 'calypso/a8c-for-agencies/components/form/section';
-import SearchableDropdown from 'calypso/a8c-for-agencies/components/searchable-dropdown';
 import { A4A_PARTNER_DIRECTORY_DASHBOARD_LINK } from 'calypso/a8c-for-agencies/components/sidebar-menu/lib/constants';
 import BudgetSelector from 'calypso/a8c-for-agencies/sections/partner-directory/components/budget-selector';
 import { AgencyDetails } from 'calypso/a8c-for-agencies/sections/partner-directory/types';
 import { reduxDispatch } from 'calypso/lib/redux-bridge';
+import { useSelector } from 'calypso/state';
 import { setActiveAgency } from 'calypso/state/a8c-for-agencies/agency/actions';
+import { getActiveAgency } from 'calypso/state/a8c-for-agencies/agency/selectors';
 import { Agency } from 'calypso/state/a8c-for-agencies/types';
 import { errorNotice, successNotice } from 'calypso/state/notices/actions';
 import IndustriesSelector from '../components/industries-selector';
@@ -39,9 +43,15 @@ const AgencyDetailsForm = ( { initialFormData }: Props ) => {
 
 	const { validate, validationError, updateValidationError } = useDetailsFormValidation();
 
+	const agency = useSelector( getActiveAgency );
+
+	const { showFeedback, isFeedbackShown, feedbackProps } =
+		useShowFeedback( 'agency-details-added' );
+	const isProductFeedbackEnabled = isEnabled( 'a4a-product-feedback' );
+
 	const onSubmitSuccess = useCallback(
 		( response: Agency ) => {
-			response && reduxDispatch( setActiveAgency( response ) );
+			response && reduxDispatch( setActiveAgency( { ...agency, ...response } ) );
 
 			reduxDispatch(
 				successNotice( translate( 'Your agency profile was submitted!' ), {
@@ -49,9 +59,15 @@ const AgencyDetailsForm = ( { initialFormData }: Props ) => {
 					duration: 6000,
 				} )
 			);
-			page( A4A_PARTNER_DIRECTORY_DASHBOARD_LINK );
+			isProductFeedbackEnabled && ! isFeedbackShown
+				? window.history.replaceState(
+						null,
+						'',
+						window.location.pathname + window.location.search + '#feedback'
+				  )
+				: page( A4A_PARTNER_DIRECTORY_DASHBOARD_LINK );
 		},
-		[ translate ]
+		[ agency, isProductFeedbackEnabled, isFeedbackShown, translate ]
 	);
 
 	const onSubmitError = useCallback( () => {
@@ -102,6 +118,10 @@ const AgencyDetailsForm = ( { initialFormData }: Props ) => {
 		} );
 	};
 
+	if ( isProductFeedbackEnabled && showFeedback ) {
+		return <A4AFeedback { ...feedbackProps } />;
+	}
+
 	return (
 		<Form
 			className="partner-directory-agency-details"
@@ -119,6 +139,9 @@ const AgencyDetailsForm = ( { initialFormData }: Props ) => {
 			<FormSection title={ translate( 'Agency information' ) }>
 				<FormField
 					label={ translate( 'Company name' ) }
+					description={ translate(
+						'Include only your company name; save any descriptors for the Company bio section.'
+					) }
 					error={ validationError.name }
 					field={ formData.name }
 					checks={ [ validateNonEmpty() ] }
@@ -228,6 +251,17 @@ const AgencyDetailsForm = ( { initialFormData }: Props ) => {
 				</FormField>
 				<FormField
 					label={ translate( 'Company logo' ) }
+					description={ translate( 'Need help? {{a}}View our logo guidelines.{{/a}}', {
+						components: {
+							a: (
+								<a
+									href="https://agencieshelp.automattic.com/knowledge-base/adding-a-logo-to-the-partner-directory-agency-profile/"
+									target="_blank"
+									rel="noreferrer noopener"
+								/>
+							),
+						},
+					} ) }
 					sub={ translate(
 						'Upload your agency logo sized at 800px by 320px. Format allowed: JPG, PNG'
 					) }

@@ -1,5 +1,5 @@
 @import "@wordpress/base-styles/breakpoints";
-@import "@automattic/components/src/styles/typography.scss";
+@import "@automattic/components/src/styles/typography";
 
 $blueberry-color: #3858e9;
 
@@ -17,6 +17,7 @@ $blueberry-color: #3858e9;
 			word-wrap: anywhere;
 
 			.item-preview__header-summary-link svg {
+				padding: 0 0 2px 4px;
 				vertical-align: middle;
 			}
 
@@ -101,10 +102,6 @@ $blueberry-color: #3858e9;
 	@media (max-width: $break-large) {
 		display: flex;
 		padding: 24px 24px 8px;
-
-		.sites-dataviews__site-favicon {
-			border-radius: 2px;
-		}
 
 		.item-preview__header-content {
 			flex-grow: 1;

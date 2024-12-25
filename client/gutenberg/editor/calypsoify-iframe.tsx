@@ -95,7 +95,7 @@ enum WindowActions {
 
 enum EditorActions {
 	GoToAllPosts = 'goToAllPosts', // Unused action in favor of CloseEditor. Maintained here to support cached scripts.
-	GoToPatterns = 'goToPatterns',
+	WpAdminRedirect = 'wpAdminRedirect',
 	CloseEditor = 'closeEditor',
 	OpenMediaModal = 'openMediaModal',
 	OpenCheckoutModal = 'openCheckoutModal',
@@ -383,7 +383,7 @@ class CalypsoifyIframe extends Component< ComponentProps, State > {
 			this.navigate( destinationUrl, unsavedChanges );
 		}
 
-		if ( EditorActions.GoToPatterns === action ) {
+		if ( EditorActions.WpAdminRedirect === action ) {
 			const { destinationUrl, unsavedChanges } = payload;
 
 			this.navigate( `https://${ this.props.siteSlug }${ destinationUrl }`, unsavedChanges );
@@ -809,7 +809,6 @@ const mapStateToProps = (
 		showDraftPostModal,
 		...pressThisData,
 		...bloggingPromptData,
-		assembler: getQueryArg( window.location.href, 'assembler' ), // Customize the first slide of Welcome Tour in the site editor
 		canvas: getQueryArg( window.location.href, 'canvas' ), // Site editor can initially load with or without nav sidebar (Gutenberg v15.0.0)
 	} );
 

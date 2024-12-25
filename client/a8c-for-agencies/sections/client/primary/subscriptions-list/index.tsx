@@ -1,17 +1,18 @@
 import { useDesktopBreakpoint } from '@automattic/viewport-react';
+import { filterSortAndPaginate } from '@wordpress/dataviews';
 import clsx from 'clsx';
 import { useTranslate } from 'i18n-calypso';
 import { useMemo, ReactNode, useState, useCallback } from 'react';
 import { initialDataViewsState } from 'calypso/a8c-for-agencies/components/items-dashboard/constants';
 import ItemsDataViews from 'calypso/a8c-for-agencies/components/items-dashboard/items-dataviews';
-import Layout from 'calypso/a8c-for-agencies/components/layout';
-import LayoutBody from 'calypso/a8c-for-agencies/components/layout/body';
-import LayoutHeader, {
-	LayoutHeaderTitle as Title,
-} from 'calypso/a8c-for-agencies/components/layout/header';
-import LayoutTop from 'calypso/a8c-for-agencies/components/layout/top';
+import { LayoutWithGuidedTour as Layout } from 'calypso/a8c-for-agencies/components/layout/layout-with-guided-tour';
+import LayoutTop from 'calypso/a8c-for-agencies/components/layout/layout-with-payment-notification';
 import MobileSidebarNavigation from 'calypso/a8c-for-agencies/components/sidebar/mobile-sidebar-navigation';
 import useFetchClientProducts from 'calypso/a8c-for-agencies/data/client/use-fetch-client-products';
+import LayoutBody from 'calypso/layout/multi-sites-dashboard/body';
+import LayoutHeader, {
+	LayoutHeaderTitle as Title,
+} from 'calypso/layout/multi-sites-dashboard/header';
 import useFetchClientSubscriptions from '../../hooks/use-fetch-client-subscriptions';
 import {
 	SubscriptionAction,
@@ -44,18 +45,25 @@ export default function SubscriptionsList() {
 		() => [
 			{
 				id: 'purchase',
-				header: translate( 'Purchase' ).toUpperCase(),
+				label: translate( 'Purchase' ).toUpperCase(),
 				getValue: () => '-',
 				render: ( { item }: { item: Subscription } ): ReactNode => {
 					const product = products?.find( ( product ) => product.product_id === item.product_id );
-					return <SubscriptionPurchase isFetching={ isFetchingProducts } name={ product?.name } />;
+					const isPressable = product?.slug.startsWith( 'pressable' );
+					return (
+						<SubscriptionPurchase
+							isFetching={ isFetchingProducts }
+							name={ product?.name }
+							isPressable={ isPressable }
+						/>
+					);
 				},
 				enableHiding: false,
 				enableSorting: false,
 			},
 			{
 				id: 'price',
-				header: translate( 'Price' ).toUpperCase(),
+				label: translate( 'Price' ).toUpperCase(),
 				getValue: () => '-',
 				render: ( { item }: { item: Subscription } ): ReactNode => {
 					const product = products?.find( ( product ) => product.product_id === item.product_id );
@@ -66,7 +74,7 @@ export default function SubscriptionsList() {
 			},
 			{
 				id: 'subscription-status',
-				header: translate( 'Subscription Status' ).toUpperCase(),
+				label: translate( 'Subscription Status' ).toUpperCase(),
 				getValue: () => '-',
 				render: ( { item }: { item: Subscription } ): ReactNode => {
 					return <SubscriptionStatus status={ item.status } translate={ translate } />;
@@ -76,7 +84,7 @@ export default function SubscriptionsList() {
 			},
 			{
 				id: 'actions',
-				header: translate( 'Actions' ).toUpperCase(),
+				label: translate( 'Actions' ).toUpperCase(),
 				getValue: () => '-',
 				render: ( { item }: { item: Subscription } ): ReactNode => {
 					return (
@@ -92,6 +100,9 @@ export default function SubscriptionsList() {
 		],
 		[ isFetchingProducts, onCancelSubscription, products, translate ]
 	);
+	const { data: items, paginationInfo } = useMemo( () => {
+		return filterSortAndPaginate( data ?? [], dataViewsState, fields );
+	}, [ data, dataViewsState, fields ] );
 
 	return (
 		<Layout
@@ -114,17 +125,15 @@ export default function SubscriptionsList() {
 					<div className="redesigned-a8c-table">
 						<ItemsDataViews
 							data={ {
-								items: data || [],
-								pagination: {
-									totalItems: 1,
-									totalPages: 1,
-								},
+								items,
+								pagination: paginationInfo,
 								itemFieldId: 'id',
 								enableSearch: false,
 								fields: fields,
 								actions: [],
 								setDataViewsState: setDataViewsState,
 								dataViewsState: dataViewsState,
+								defaultLayouts: { table: {} },
 							} }
 							isLoading={ isFetching }
 						/>

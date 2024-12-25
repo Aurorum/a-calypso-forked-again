@@ -23,6 +23,10 @@ const logCheckoutError = ( error: Error ) => {
 
 const CheckoutMainWrapperStyles = styled.div`
 	background-color: ${ colorStudio.colors[ 'White' ] };
+
+	a {
+		color: ${ colorStudio.colors[ 'WordPress Blue 50' ] };
+	}
 `;
 
 export default function CheckoutMainWrapper( {
@@ -76,6 +80,10 @@ export default function CheckoutMainWrapper( {
 	const translate = useTranslate();
 	const locale = useSelector( getCurrentUserLocale );
 	const selectedSiteId = useSelector( getSelectedSiteId ) ?? undefined;
+
+	useEffect( () => {
+		window.scrollTo( 0, 0 );
+	}, [] );
 
 	useEffect( () => {
 		if ( productAliasFromUrl ) {

@@ -1,6 +1,6 @@
 import clsx from 'clsx';
 import React, { useState } from 'react';
-import { GuidedTourStep } from 'calypso/a8c-for-agencies/components/guided-tour-step';
+import { GuidedTourStep } from 'calypso/components/guided-tour/step';
 import SectionNav from 'calypso/components/section-nav';
 import NavItem from 'calypso/components/section-nav/item';
 import NavTabs from 'calypso/components/section-nav/tabs';
@@ -40,6 +40,7 @@ export default function ItemPreviewPane( {
 	addTourDetails,
 	itemPreviewPaneHeaderExtraProps,
 	hideNavIfSingleTab,
+	enforceTabsView,
 }: PreviewPaneProps ) {
 	const [ navRef, setNavRef ] = useState< HTMLElement | null >( null );
 
@@ -96,6 +97,7 @@ export default function ItemPreviewPane( {
 				<SectionNav
 					className={ clsx( 'preview-pane__navigation', { 'is-hidden': shouldHideNav } ) }
 					selectedText={ selectedFeature.tab.label }
+					enforceTabsView={ enforceTabsView }
 				>
 					{ navItems && navItems.length > 0 ? (
 						<NavTabs hasHorizontalScroll>{ navItems }</NavTabs>

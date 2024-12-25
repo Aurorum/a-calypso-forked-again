@@ -26,7 +26,6 @@ body.is-mobile-app-view {
 // The WordPress.com Masterbar
 .masterbar {
 	background: var(--color-masterbar-background);
-	border-bottom: 1px solid var(--color-masterbar-border);
 	color: var(--color-masterbar-text);
 	font-size: $masterbar-font-size;
 	display: flex;
@@ -305,16 +304,7 @@ body.is-mobile-app-view {
 		}
 
 		&.masterbar__reader {
-			padding: 0 8px;
-
-			.masterbar_svg-reader {
-				padding: 0 0 0 2px;
-			}
-
-			&.is-active {
-				padding: 0 2px 0 0;
-				margin: 0 6px 0 4px;
-			}
+			padding: 0;
 		}
 	}
 
@@ -554,7 +544,7 @@ body.is-mobile-app-view {
 		padding: 0;
 
 		&:not(.masterbar__item--always-show-content) {
-			width: 52px;
+			width: 46px;
 		}
 		// Show gravatar content
 		&:not(.masterbar__item-howdy) .masterbar__item-content {
@@ -619,10 +609,6 @@ body.is-mobile-app-view {
 		// reset flex value on mobile
 		flex: 0 1 auto;
 		padding: 0;
-
-		&:not(.masterbar__item--always-show-content) {
-			width: 46px;
-		}
 
 		.masterbar__item-content {
 			display: none;
@@ -1037,8 +1023,10 @@ body.is-mobile-app-view {
 		display: flex;
 		flex-direction: row;
 		gap: 12px;
+		padding: 4px 3px;
 
 		.masterbar__item-howdy-account-gravatar {
+			border: none;
 			flex-basis: auto;
 			max-width: 50%;
 		}
@@ -1051,16 +1039,22 @@ body.is-mobile-app-view {
 			display: flex;
 			flex-direction: column;
 			align-items: flex-start;
-			padding: 0;
+			padding: 3px 5px;
 			margin: 0;
 			line-height: 18px;
+
+			.username {
+				font-size: 11px; /* stylelint-disable-line declaration-property-unit-allowed-list */
+				line-height: 14px;
+				margin-bottom: 4px;
+			}
 		}
 	}
 
 	.masterbar__item-subitems {
 		min-width: 264px !important;
 		max-height: 94px;
-		padding: 12px 0 0 0;
+		padding: 12px 0;
 
 		@media only screen and (max-width: 781px) {
 			min-width: 100% !important;
@@ -1073,8 +1067,8 @@ body.is-mobile-app-view {
 		&.logout-link {
 			position: relative;
 			float: left;
-			top: -35px;
-			left: 79px;
+			top: -5px;
+			left: 85px;
 		}
 	}
 

@@ -5,14 +5,19 @@ import { createElement } from 'react';
 import store from 'store';
 import { notFound } from 'calypso/controller';
 import { recordPageView } from 'calypso/lib/analytics/page-view';
+import { loadExperimentAssignment } from 'calypso/lib/explat';
+import { isWooOAuth2Client } from 'calypso/lib/oauth2-clients';
 import { login } from 'calypso/lib/paths';
 import { sectionify } from 'calypso/lib/route';
+import { addQueryArgs } from 'calypso/lib/url';
 import flows from 'calypso/signup/config/flows';
 import { isUserLoggedIn } from 'calypso/state/current-user/selectors';
+import { getCurrentOAuth2Client } from 'calypso/state/oauth2-clients/ui/selectors';
 import { updateDependencies } from 'calypso/state/signup/actions';
 import { getSignupDependencyStore } from 'calypso/state/signup/dependency-store/selectors';
 import { setCurrentFlowName, setPreviousFlowName } from 'calypso/state/signup/flow/actions';
 import { getCurrentFlowName } from 'calypso/state/signup/flow/selectors';
+import { submitSignupStep } from 'calypso/state/signup/progress/actions';
 import { getSignupProgress } from 'calypso/state/signup/progress/selectors';
 import { requestSite } from 'calypso/state/sites/actions';
 import { getSiteId } from 'calypso/state/sites/selectors';
@@ -23,9 +28,12 @@ import { isReskinnedFlow } from './is-flow';
 import SignupComponent from './main';
 import {
 	retrieveSignupDestination,
+	getDomainsDependencies,
 	clearSignupDestinationCookie,
 	getSignupCompleteFlowName,
 	wasSignupCheckoutPageUnloaded,
+	setHasRedirectedForExperiment,
+	getHasRedirectedForExperiment,
 } from './storageUtils';
 import {
 	getStepUrl,
@@ -37,7 +45,6 @@ import {
 	getFlowPageTitle,
 	shouldForceLogin,
 } from './utils';
-
 /**
  * Constants
  */
@@ -57,20 +64,28 @@ const removeWhiteBackground = function () {
 	document.body.classList.remove( 'is-white-signup' );
 };
 
+function setReferrerPolicy() {
+	try {
+		// Remove existing <meta> tags with name="referrer"
+		const existingMetaTags = document.querySelectorAll( 'meta[name="referrer"]' );
+		existingMetaTags.forEach( ( tag ) => tag.remove() );
+
+		// Create a new <meta> element
+		const metaReferrer = document.createElement( 'meta' );
+		metaReferrer.name = 'referrer';
+		metaReferrer.content = 'strict-origin-when-cross-origin';
+
+		// Append the new <meta> element to the <head> section
+		document.head.appendChild( metaReferrer );
+	} catch ( e ) {}
+}
+
 export const addVideoPressSignupClassName = () => {
 	if ( ! document ) {
 		return;
 	}
 
 	document.body.classList.add( 'is-videopress-signup' );
-};
-
-export const addVideoPressTvSignupClassName = () => {
-	if ( ! document ) {
-		return;
-	}
-
-	document.body.classList.add( 'is-videopress-tv-signup' );
 };
 
 export const addP2SignupClassName = () => {
@@ -93,7 +108,12 @@ export default {
 	redirectTests( context, next ) {
 		const isLoggedIn = isUserLoggedIn( context.store.getState() );
 		const currentFlowName = getFlowName( context.params, isLoggedIn );
+		const isWoo = isWooOAuth2Client( getCurrentOAuth2Client( context.store.getState() ) );
+
 		if ( isReskinnedFlow( currentFlowName ) ) {
+			next();
+		} else if ( isWoo ) {
+			// Do nothing, Woo flow background should keep white.
 			next();
 		} else if (
 			context.pathname.indexOf( 'domain' ) >= 0 ||
@@ -103,17 +123,12 @@ export default {
 			context.pathname.indexOf( 'launch-only' ) >= 0 ||
 			context.params.flowName === 'account' ||
 			context.params.flowName === 'crowdsignal' ||
-			context.params.flowName === 'pressable-nux' ||
 			context.params.flowName === 'clone-site'
 		) {
 			removeWhiteBackground();
 			next();
 		} else if ( context.pathname.includes( 'p2' ) ) {
 			addP2SignupClassName();
-			removeWhiteBackground();
-			next();
-		} else if ( context.query.flow === 'videopress-tv' ) {
-			addVideoPressTvSignupClassName();
 			removeWhiteBackground();
 			next();
 		} else if ( context.pathname.includes( 'videopress' ) ) {
@@ -226,6 +241,47 @@ export default {
 
 		store.set( 'signup-locale', localeFromParams );
 
+		const hasRedirected =
+			context.querystring?.includes( 'redirected_1220=true' ) ||
+			// Check the URL as well because sometimes the context.querystring lags behind the URL.
+			new URLSearchParams( window.location.search ).has( 'redirected_1220' ) ||
+			// Check session storage in case the query parma was omitted.
+			getHasRedirectedForExperiment();
+
+		const isOnboardingFlow = flowName === 'onboarding';
+
+		if ( isOnboardingFlow && ! hasRedirected ) {
+			await loadExperimentAssignment( 'calypso_signup_onboarding_aa_test' );
+			setHasRedirectedForExperiment();
+
+			const stepperOnboardingExperimentAssignment = await loadExperimentAssignment(
+				'calypso_signup_onboarding_stepper_flow_confidence_check_2'
+			);
+
+			setReferrerPolicy();
+			let url =
+				getStepUrl(
+					flowName,
+					getStepName( context.params ),
+					getStepSectionName( context.params ),
+					localeFromParams ?? localeFromStore,
+					null,
+					stepperOnboardingExperimentAssignment.variationName === 'stepper' ? '/setup' : '/start'
+				) +
+				'?redirected_1220=true' +
+				( context.querystring ? '&' + context.querystring : '' ) +
+				( context.hashstring ? '#' + context.hashstring : '' );
+
+			if ( document.referrer ) {
+				url = addQueryArgs( { start_ref: document.referrer }, url );
+			}
+
+			window.location.replace( url );
+			// skip the rest to avoid the `page.redirect` call below.
+			next();
+			return;
+		}
+
 		// const isOnboardingFlow = flowName === 'onboarding';
 		// // See: 1113-gh-Automattic/experimentation-platform for details.
 		// if ( isOnboardingFlow || isOnboardingGuidedFlow( flowName ) ) {
@@ -305,6 +361,21 @@ export default {
 			wasSignupCheckoutPageUnloaded() && signupDestinationCookieExists && isReEnteringFlow;
 		const isManageSiteFlow =
 			! excludeFromManageSiteFlows && ! isAddNewSiteFlow && isReEnteringSignupViaBrowserBack;
+
+		// Hydrate the store with domains dependencies from session storage,
+		// only in the onboarding flow.
+		const domainsDependencies = getDomainsDependencies();
+		if (
+			domainsDependencies &&
+			isManageSiteFlow &&
+			flowName === 'onboarding' &&
+			stepName !== 'domains'
+		) {
+			const { step, dependencies } = JSON.parse( domainsDependencies );
+			if ( step && dependencies ) {
+				context.store.dispatch( submitSignupStep( step, dependencies ) );
+			}
+		}
 
 		// If the flow has siteId or siteSlug as query dependencies, we should not clear selected site id
 		if (

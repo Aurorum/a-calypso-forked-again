@@ -2,19 +2,19 @@
 @import "@wordpress/base-styles/mixins";
 
 
-.main.a4a-layout.sites-dashboard {
+.main.multi-sites-dashboard-layout.sites-dashboard {
 	padding-block-start: 0;
 
-	.a4a-layout__header-actions {
+	.multi-sites-dashboard-layout__header-actions {
 		white-space: nowrap;
 	}
 
-	.site-preview-pane .a4a-layout-column__container {
+	.site-preview-pane .multi-sites-dashboard-layout-column__container {
 		display: flex;
 	}
 
-	.a4a-layout-column {
-		.a4a-layout-column__container {
+	.multi-sites-dashboard-layout-column {
+		.multi-sites-dashboard-layout-column__container {
 			display: flex;
 			flex-direction: column;
 			height: 100%;
@@ -39,7 +39,7 @@
 		margin: -10px 0;
 	}
 
-	.a4a-layout__top-wrapper:not(.preview-hidden) {
+	.multi-sites-dashboard-layout__top-wrapper:not(.preview-hidden) {
 		padding-block-start: 24px;
 		@include breakpoint-deprecated( "<660px" ) {
 			padding-block-start: 0;
@@ -48,6 +48,33 @@
 
 	.components-input-base {
 		border-radius: 4px;
+	}
+
+	.dataviews__view-actions,
+	.dataviews-filters__container {
+		padding: 16px;
+
+		@media (min-width: $break-small) {
+			padding: 16px 64px;
+		}
+	}
+
+	.dataviews-view-table tr td:first-child,
+	.dataviews-view-table tr th:first-child {
+		padding-left: 16px;
+
+		@media (min-width: $break-small) {
+			padding-left: 64px;
+		}
+	}
+
+	.dataviews-view-table tr td:last-child,
+	.dataviews-view-table tr th:last-child {
+		padding-right: 16px;
+
+		@media (min-width: $break-small) {
+			padding-right: 64px;
+		}
 	}
 
 	@media (min-width: $break-large) {
@@ -67,35 +94,10 @@
 		&.sites-dashboard__layout:not(.preview-hidden) .sites-overview__page-subtitle {
 			display: none;
 		}
-
-		.dataviews-view-table tr th:first-child,
-		.dataviews-view-table tr td:first-child {
-			padding-left: 64px;
-		}
-		.dataviews-view-table tr {
-			th:last-child,
-			td:last-child {
-				padding-right: 64px;
-				width: 20px;
-				white-space: nowrap;
-
-				position: sticky;
-				right: 0;
-				z-index: 1;
-				background: linear-gradient(to right, transparent 0%, #fff 25%);
-			}
-
-			&:hover {
-				th:last-child,
-				td:last-child {
-					background: linear-gradient(to right, transparent 0%, var(--color-neutral-0) 25%);
-				}
-			}
-		}
 	}
 
 	@media (max-width: 660px) {
-		.a4a-layout__header-main {
+		.multi-sites-dashboard-layout__header-main {
 			display: none;
 		}
 	}
@@ -136,8 +138,7 @@
 					flex-grow: 0;
 				}
 
-				.sites-overview__tabs,
-				.dataviews-filters__view-actions {
+				.sites-overview__tabs {
 					border-bottom: 1px solid var(--color-accent-5);
 				}
 
@@ -151,15 +152,7 @@
 
 		.dataviews-view-table tr th:first-child,
 		.dataviews-view-table tr td:first-child {
-			padding: 8px 24px 8px 8px;
-			width: 70%;
-		}
-
-		.dataviews-view-table tr td:first-child:has(.sites-dataview__site-error) {
-			padding: 8px 0 8px 8px;
-		}
-		.dataviews-view-table tr td:last-child {
-			padding: 8px 8px 8px 0;
+			width: 80%;
 		}
 
 		.components-button.is-compact.has-icon:not(.has-text).dataviews-filters-button {
@@ -168,27 +161,6 @@
 
 		.components-button.is-compact.is-tertiary {
 			margin-right: 8px;
-		}
-
-		.dataviews-filters__view-actions {
-			padding-bottom: 8px;
-
-			& > :first-child {
-				margin-inline-start: 8px;
-			}
-
-			.components-input-control {
-				flex-grow: 1;
-			}
-
-			.components-flex.components-h-stack {
-				flex: 6;
-			}
-
-			.components-button.is-compact.has-icon {
-				flex: 1;
-				margin-left: -12px;
-			}
 		}
 
 		.sites-overview__stats-trend,
@@ -200,18 +172,6 @@
 			display: none;
 		}
 
-		td:nth-child(n+2):nth-child(-n+8) {
-			display: none;
-		}
-
-		tr td:first-child {
-			padding-inline-start: 8px;
-		}
-
-		tr td:last-child {
-			padding-inline-end: 8px;
-		}
-
 		.item-preview__content {
 			padding: 10px 10px 88px; /* 88px matches the padding from PR #39201. */
 
@@ -219,26 +179,6 @@
 				/* Prevents the backup page from overriding our padding and overflow settings. */
 				padding-bottom: 88px; /* 88px matches the padding from PR #39201. */
 				overflow: hidden;
-			}
-		}
-
-		.dataviews-view-table-wrapper {
-			flex: 1;
-			overflow-y: auto;
-
-			table {
-				width: 100%;
-				max-width: 100vw;
-			}
-
-			th[data-field-id="stats"],
-			th[data-field-id="boost"],
-			th[data-field-id="backup"],
-			th[data-field-id="monitor"],
-			th[data-field-id="scan"],
-			th[data-field-id="plugins"],
-			th[data-field-id="favorite"] {
-				display: none;
 			}
 		}
 	}
@@ -265,21 +205,15 @@
 	}
 
 	@media (min-width: $break-large) {
-		&.sites-dashboard__layout {
-			.dataviews-view-table-wrapper {
-				overflow-y: auto;
-			}
-		}
-
 		&.sites-dashboard__layout:not(.preview-hidden) {
 			.sites-overview {
 				padding: 0;
 
-				.a4a-layout__viewport {
+				.multi-sites-dashboard-layout__viewport {
 					padding-inline: 16px;
 				}
 
-				.a4a-layout__header-title {
+				.multi-sites-dashboard-layout__header-title {
 					font-size: rem(20px);
 					font-weight: 500;
 				}
@@ -301,28 +235,8 @@
 				display: none;
 			}
 
-			.sites-overview__tabs,
-			.dataviews-filters__view-actions {
-				border-bottom: 1px solid var(--color-accent-5);
-			}
-
-			.dataviews-filters__view-actions {
-				padding: 16px 0;
-				margin: 0;
-				display: flex;
-
-				.components-h-stack {
-					width: unset;
-				}
-
-				.components-h-stack,
-				.components-button {
-					flex-grow: 1;
-				}
-
-			}
-
 			.sites-overview__tabs {
+				border-bottom: 1px solid var(--color-accent-5);
 				padding: 0 24px;
 			}
 
@@ -346,16 +260,7 @@
 				overflow-y: auto;
 
 				li {
-					padding: 8px 24px;
 					border-bottom: 1px solid var(--color-accent-5);
-				}
-
-				li:has(.sites-dataview__site-error-span) {
-					border-bottom: 0;
-				}
-
-				li:has(.sites-dataview__site-error) {
-					padding: 0 24px 24px;
 				}
 
 				.dataviews-view-list__fields {
@@ -385,13 +290,16 @@
 							width: 100%;
 							justify-content: flex-start;
 						}
-
-						.sites-dataview__site-error {
-							font-size: rem(13px);
-							border-radius: 4px;
-							padding: 4px 4px 4px 2px;
-						}
 					}
+				}
+
+				// Ideally instead of reusing the site name full field
+				// We should be setting a media field and a primary field.
+				.dataviews-view-list__media-wrapper {
+					display: none;
+				}
+				.dataviews-view-list__primary-field {
+					display: none;
 				}
 
 				.sites-overview__stats-trend,
@@ -430,50 +338,6 @@
 		}
 	}
 
-	tr:has(.sites-dataview__site-error):hover {
-		background: unset;
-		background-color: unset;
-	}
-
-	td:has(.sites-dataview__site-error-span) {
-		border-bottom: 0;
-	}
-
-	td:has(.sites-dataview__site-error) {
-		padding: 0 0 16px 0;
-		height: 40px;
-	}
-
-	td:first-child:has(.sites-dataview__site-error) {
-		padding: 0 0 16px 64px;
-
-		.sites-dataview__site-error {
-			padding-left: 10px;
-			border-radius: 4px 0 0 4px;
-		}
-	}
-
-	td:last-child:has(.sites-dataview__site-error) {
-		padding: 0 64px 16px 0;
-
-		.sites-dataview__site-error {
-			border-radius: 0 4px 4px 0;
-		}
-	}
-
-	.dataviews-view-table__cell-content-wrapper:has(.sites-dataview__site-error) {
-		height: 100%;
-	}
-
-	.sites-dataview__site-error {
-		color: #691c1c;
-		background-color: #facfd2;
-		height: 100%;
-		display: flex;
-		align-items: center;
-		gap: 6px;
-	}
-
 	.sites-overview__content-wrapper {
 		max-width: none;
 	}
@@ -481,29 +345,12 @@
 	&.sites-dashboard__layout:not(.preview-hidden) {
 
 
-		.a4a-layout__top-wrapper {
+		.multi-sites-dashboard-layout__top-wrapper {
 			padding-block-start: 16px;
 
-			.a4a-layout__header {
+			.multi-sites-dashboard-layout__header {
 				padding: 0;
 			}
-		}
-
-		.dataviews-filters__view-actions {
-			.components-h-stack {
-				flex-grow: 0;
-				width: 80%;
-				gap: 6px;
-			}
-
-			.components-button {
-				flex-grow: 0;
-			}
-		}
-
-		.components-base-control {
-			width: 86%;
-			margin-right: 6px;
 		}
 
 		.site-preview__open {
@@ -511,7 +358,7 @@
 		}
 	}
 
-	&.sites-dashboard__layout:not(.preview-hidden) .a4a-layout__navigation-wrapper {
+	&.sites-dashboard__layout:not(.preview-hidden) .multi-sites-dashboard-layout__navigation-wrapper {
 		display: none;
 	}
 
@@ -557,20 +404,15 @@
 			flex-direction: column;
 			height: 100%;
 			width: 100%;
-			overflow: hidden;
 
 			> div[data-wp-component="VStack"] {
 				align-items: stretch;
 				overflow: hidden;
 			}
-
-			.components-button:focus:not(:disabled) {
-				box-shadow: 0 0 0 2px var(--color-primary-light);
-			}
 		}
 
-		.a4a-layout__top-wrapper,
-		.a4a-layout__body {
+		.multi-sites-dashboard-layout__top-wrapper,
+		.multi-sites-dashboard-layout__body {
 			> * {
 				@include breakpoint-deprecated(">660px") {
 					max-width: none;
@@ -589,7 +431,7 @@
 				display: flex;
 				flex: 1;
 				height: 100%;
-				overflow: hidden;
+				overflow: auto;
 			}
 		}
 
@@ -639,20 +481,6 @@
 
 					.sites-overview__content {
 						margin-top: 24px;
-
-						&.is-hiding-navigation {
-							margin-top: 48px; // If there is no navigation bar we need to add a bigger margin.
-						}
-					}
-
-					.dataviews-filters__view-actions {
-						& > :first-child {
-							margin-inline-start: 64px;
-						}
-
-						& > :last-child {
-							margin-inline-end: 64px;
-						}
 					}
 				}
 			}

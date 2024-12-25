@@ -1,68 +1,68 @@
 import page from '@automattic/calypso-router';
 import { Card } from '@automattic/components';
+import { useI18n } from '@wordpress/react-i18n';
 import { addQueryArgs } from '@wordpress/url';
 import { useState } from 'react';
-import { UrlData } from 'calypso/blocks/import/types';
 import FormTextInputWithAction from 'calypso/components/forms/form-text-input-with-action';
 import { isValidUrl, parseUrl } from 'calypso/lib/importer/url-validation';
 
-type Props = {
-	stepUrl: string;
-	urlData?: UrlData;
+interface SelectNewsletterFormProps {
+	redirectUrl: string;
+	value: string;
 	isLoading: boolean;
-	validFromSite: boolean;
-};
+	isError: boolean;
+}
 
 export default function SelectNewsletterForm( {
-	stepUrl,
-	urlData,
+	redirectUrl,
+	value,
 	isLoading,
-	validFromSite,
-}: Props ) {
-	const [ hasError, setHasError ] = useState( ! validFromSite );
+	isError,
+}: SelectNewsletterFormProps ) {
+	const { __ } = useI18n();
+	const [ isUrlInvalid, setIsUrlInvalid ] = useState( false );
 
 	const handleAction = ( fromSite: string ) => {
 		if ( ! isValidUrl( fromSite ) ) {
-			setHasError( true );
+			setIsUrlInvalid( true );
 			return;
 		}
 
-		const { hostname } = parseUrl( fromSite );
-		page( addQueryArgs( stepUrl, { from: hostname } ) );
-		return;
+		const { hostname, pathname } = parseUrl( fromSite );
+		const from = pathname.match( /^\/@\w+$/ ) ? hostname + pathname : hostname;
+
+		page( addQueryArgs( redirectUrl, { from } ) );
 	};
 
 	if ( isLoading ) {
 		return (
-			<Card>
-				<div className="select-newsletter-form">
-					<p className="is-loading"></p>
-				</div>
+			<Card className="select-newsletter-form">
+				<div className="is-loading" />
 			</Card>
 		);
 	}
 
+	const hasError = isUrlInvalid || isError;
+
 	return (
-		<Card>
-			<div className="select-newsletter-form">
-				<FormTextInputWithAction
-					onAction={ handleAction }
-					placeholder="https://example.substack.com"
-					action="Continue"
-					isError={ hasError }
-					defaultValue={ urlData?.url }
-				/>
-				{ hasError && (
-					<p className="select-newsletter-form__help is-error">
-						Please enter a valid substack URL.
-					</p>
-				) }
-				{ ! hasError && (
-					<p className="select-newsletter-form__help">
-						Enter the URL of the substack newsletter that you wish to import.
-					</p>
-				) }
-			</div>
+		<Card className="select-newsletter-form">
+			<FormTextInputWithAction
+				onAction={ handleAction }
+				placeholder="https://example.substack.com"
+				action={ __( 'Continue' ) }
+				isError={ hasError }
+				defaultValue={ value }
+			/>
+			{ hasError && (
+				<p className="select-newsletter-form__help is-error">
+					{ __( 'Please enter a valid Substack URL.' ) }
+				</p>
+			) }
+			{ ! hasError && (
+				<p className="select-newsletter-form__help">
+					{ __( 'Enter the URL of the Substack newsletter that you wish to import.' ) }
+				</p>
+			) }
 		</Card>
 	);
 }

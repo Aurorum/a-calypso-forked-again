@@ -8,8 +8,8 @@ const contextLinks = {
 		post_id: 80368,
 	},
 	'admin-interface-style': {
-		link: 'https://wordpress.com/support/dashboard/#set-the-admin-interface-style',
-		post_id: 137,
+		link: 'https://wordpress.com/support/set-your-admin-interface-style/',
+		post_id: 386651,
 	},
 	advertising: {
 		link: 'https://wordpress.com/support/promote-a-post/',
@@ -109,8 +109,18 @@ const contextLinks = {
 		post_id: 99381,
 		blog_id: DEVELOPER_WORDPRESS_BLOG_ID,
 	},
+	'hosting-edge-cache': {
+		link: 'https://developer.wordpress.com/docs/site-performance/global-edge-cache/',
+		post_id: 99415,
+		blog_id: DEVELOPER_WORDPRESS_BLOG_ID,
+	},
 	'hosting-clear-cache': {
 		link: 'https://developer.wordpress.com/docs/site-performance/global-edge-cache/#1-clear-your-site-s-cache',
+		post_id: 99415,
+		blog_id: DEVELOPER_WORDPRESS_BLOG_ID,
+	},
+	'hosting-defensive-mode': {
+		link: 'https://developer.wordpress.com/docs/site-performance/defensive-mode/',
 		post_id: 99415,
 		blog_id: DEVELOPER_WORDPRESS_BLOG_ID,
 	},
@@ -122,6 +132,11 @@ const contextLinks = {
 	'hosting-mysql': {
 		link: 'https://developer.wordpress.com/docs/developer-tools/database-access/',
 		post_id: 99378,
+		blog_id: DEVELOPER_WORDPRESS_BLOG_ID,
+	},
+	'hosting-elasticsearch': {
+		link: 'https://developer.wordpress.com/docs/elasticsearch/elasticsearch-queries/',
+		post_id: 99387,
 		blog_id: DEVELOPER_WORDPRESS_BLOG_ID,
 	},
 	import: {
@@ -208,6 +223,10 @@ const contextLinks = {
 		link: 'https://wordpress.com/support/settings/performance-settings/',
 		post_id: 179952,
 	},
+	personal_plan: {
+		link: 'https://wordpress.com/support/plan-features/personal-plan/',
+		post_id: 294086,
+	},
 	plugins: {
 		link: 'https://wordpress.com/support/plugins/',
 		post_id: 2108,
@@ -229,11 +248,15 @@ const contextLinks = {
 		post_id: 243475,
 	},
 	privacy: {
-		link: 'https://wordpress.com/support/settings/privacy-settings/',
+		link: 'https://wordpress.com/support/privacy-settings/',
 		post_id: 1507,
 	},
 	'privacy-preview-link': {
 		link: 'https://wordpress.com/support/settings/privacy-settings/#preview-link',
+		post_id: 1507,
+	},
+	'privacy-prevent-third-party-sharing': {
+		link: 'https://wordpress.com/support/privacy-settings/make-your-website-public/#prevent-third-party-sharing',
 		post_id: 1507,
 	},
 	'primary-site-address': {
@@ -284,6 +307,10 @@ const contextLinks = {
 	tags: {
 		link: 'https://wordpress.com/support/posts/tags/',
 		post_id: 8586,
+	},
+	'tax-exempt-customers': {
+		link: 'https://wordpress.com/support/vat-gst-other-taxes/#other-tax-exempt-customers',
+		post_id: 234670,
 	},
 	team: {
 		link: 'https://wordpress.com/support/user-roles/',
@@ -356,6 +383,14 @@ const contextLinks = {
 	'hosting-configuration': {
 		link: 'https://wordpress.com/support/hosting-configuration/',
 		post_id: 160841,
+	},
+	'site-icons': {
+		link: 'https://wordpress.com/support/site-icons/',
+		post_id: 1327,
+	},
+	'site-performance': {
+		link: 'https://wordpress.com/support/check-your-sites-performance/',
+		post_id: 386816,
 	},
 };
 

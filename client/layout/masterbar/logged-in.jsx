@@ -78,6 +78,7 @@ class MasterbarLoggedIn extends Component {
 		isResponsiveMenu: isWithinBreakpoint( IS_RESPONSIVE_MENU_BREAKPOINT ),
 		// making the ref a state triggers a re-render when it changes (needed for popover)
 		menuBtnRef: null,
+		readerBtnRef: null,
 	};
 
 	static propTypes = {
@@ -452,20 +453,16 @@ class MasterbarLoggedIn extends Component {
 				url={ siteActions[ 0 ].url }
 				subItems={ siteActions }
 				icon={ <span className="dashicons-before dashicons-plus" /> }
-				tooltip={ translate( 'New' ) }
+				tooltip={ translate( 'New', { context: 'admin bar menu group label' } ) }
 				tipTarget="new-menu"
 			>
-				{ translate( 'New' ) }
+				{ translate( 'New', { context: 'admin bar menu group label' } ) }
 			</Item>
 		);
 	}
 
 	renderProfileMenu() {
-		const { translate, user, siteUrl, isClassicView } = this.props;
-		const editProfileLink =
-			config.isEnabled( 'layout/site-level-user-profile' ) || isClassicView
-				? siteUrl + '/wp-admin/profile.php'
-				: '/me';
+		const { translate, user } = this.props;
 		const profileActions = [
 			{
 				label: (
@@ -478,16 +475,12 @@ class MasterbarLoggedIn extends Component {
 						/>
 						<div className="masterbar__item-howdy-account-details">
 							<span className="display-name">{ user.display_name }</span>
-							<span className="display-name edit-profile">{ translate( 'Edit Profile' ) }</span>
+							<span className="username">{ user.username }</span>
+							<span className="display-name edit-profile">{ translate( 'My Profile' ) }</span>
 						</div>
 					</div>
 				),
-				url: editProfileLink,
-			},
-			{
-				label: translate( 'My Account' ),
-				url: '/me/account',
-				className: 'account-link',
+				url: '/me',
 			},
 			{
 				label: translate( 'Log Out' ),
@@ -500,7 +493,7 @@ class MasterbarLoggedIn extends Component {
 		return (
 			<Item
 				tipTarget="me"
-				url={ editProfileLink }
+				url="/me"
 				onClick={ this.clickMe }
 				isActive={ this.isActive( 'me', true ) }
 				className="masterbar__item-howdy"

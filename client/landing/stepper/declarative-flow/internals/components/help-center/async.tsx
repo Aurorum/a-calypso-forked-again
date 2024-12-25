@@ -1,24 +1,29 @@
-import { HelpCenter, HelpCenterSelect } from '@automattic/data-stores';
-import { useDispatch, useSelect } from '@wordpress/data';
+import { HelpCenter } from '@automattic/data-stores';
+import { useDispatch } from '@wordpress/data';
+import { useCallback } from 'react';
 import AsyncLoad from 'calypso/components/async-load';
 
 const HELP_CENTER_STORE = HelpCenter.register();
 
 const AsyncHelpCenter = () => {
 	const { setShowHelpCenter } = useDispatch( HELP_CENTER_STORE );
-	const isShowingHelpCenter = useSelect(
-		( select ) => ( select( HELP_CENTER_STORE ) as HelpCenterSelect ).isHelpCenterShown(),
-		[]
-	);
 
-	const handleClose = () => setShowHelpCenter( false );
+	const handleClose = useCallback( () => {
+		setShowHelpCenter( false );
+	}, [ setShowHelpCenter ] );
 
-	if ( ! isShowingHelpCenter ) {
-		return null;
-	}
-
+	/**
+	 * The stepper query parameter ensures Webpack treats this Help Center as separate from the one in the main client app.
+	 * Without it, Webpack would create one shared chunk, loaded in both apps. Since Stepper is smaller, more CSS would
+	 * need be bundled into that shared chunk. This is great for Stepper, but it duplicates the CSS in the main client app.
+	 * See: #97480
+	 */
 	return (
-		<AsyncLoad require="@automattic/help-center" placeholder={ null } handleClose={ handleClose } />
+		<AsyncLoad
+			require="@automattic/help-center?stepper"
+			placeholder={ null }
+			handleClose={ handleClose }
+		/>
 	);
 };
 

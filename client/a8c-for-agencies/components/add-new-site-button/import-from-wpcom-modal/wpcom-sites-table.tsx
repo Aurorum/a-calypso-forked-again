@@ -13,9 +13,9 @@ import getIsSiteWPCOM from 'calypso/state/selectors/is-site-wpcom';
 import { isJetpackSite } from 'calypso/state/sites/selectors';
 import isA4AClientSite from 'calypso/state/sites/selectors/is-a4a-client-site';
 import A4ALogo from '../../a4a-logo';
+import A4ATablePlaceholder from '../../a4a-table-placeholder';
 import useManagedSitesMap from './hooks/use-managed-sites-map';
 import WPCOMSitesTableContent from './table-content';
-import WPCOMSitesTablePlaceholder from './table-placeholder';
 
 export type SiteItem = {
 	id: number;
@@ -55,10 +55,6 @@ export default function WPCOMSitesTable( {
 		isPartnerOAuthTokenLoaded: false,
 		searchQuery: '',
 		currentPage: 1,
-		sort: {
-			field: '',
-			direction: '',
-		},
 		perPage: 1,
 		agencyId,
 		filter: {
@@ -120,7 +116,7 @@ export default function WPCOMSitesTable( {
 				? [
 						{
 							id: 'site',
-							header: (
+							label: (
 								<div>
 									<CheckboxControl
 										label={ translate( 'Site' ).toUpperCase() }
@@ -146,7 +142,6 @@ export default function WPCOMSitesTable( {
 									<span>{ item.site }</span>
 								</div>
 							),
-							width: '100%',
 							enableHiding: false,
 							enableSorting: false,
 						},
@@ -154,7 +149,7 @@ export default function WPCOMSitesTable( {
 				: [
 						{
 							id: 'site',
-							header: (
+							label: (
 								<div>
 									<CheckboxControl
 										label={ translate( 'Site' ).toUpperCase() }
@@ -175,26 +170,23 @@ export default function WPCOMSitesTable( {
 									disabled={ false }
 								/>
 							),
-							width: '100%',
 							enableHiding: false,
 							enableSorting: false,
 						},
 						{
 							id: 'date',
-							header: translate( 'Date' ).toUpperCase(),
+							label: translate( 'Date' ).toUpperCase(),
 							getValue: () => '-',
 							render: ( { item }: { item: SiteItem } ) =>
 								new Date( item.date ).toLocaleDateString(),
-							width: '100%',
 							enableHiding: false,
 							enableSorting: false,
 						},
 						{
 							id: 'type',
-							header: translate( 'Type' ).toUpperCase(),
+							label: translate( 'Type' ).toUpperCase(),
 							getValue: () => '-',
 							render: ( { item }: { item: SiteItem } ) => <TypeIcon siteId={ item.id } />,
-							width: '100%',
 							enableHiding: false,
 							enableSorting: false,
 						},
@@ -205,8 +197,10 @@ export default function WPCOMSitesTable( {
 	return (
 		<div className="wpcom-sites-table redesigned-a8c-table">
 			{ isPending ? (
-				<WPCOMSitesTablePlaceholder />
+				<A4ATablePlaceholder />
 			) : (
+				// @ts-expect-error the error is because field.label types do not admit JSX.Elements.
+				// To remove when this is using dataviews@4.2.0
 				<WPCOMSitesTableContent items={ items } fields={ fields } />
 			) }
 		</div>

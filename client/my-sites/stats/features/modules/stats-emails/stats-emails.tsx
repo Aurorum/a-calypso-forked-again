@@ -66,7 +66,7 @@ const StatsEmails: React.FC< StatsDefaultModuleProps > = ( {
 							{ translate( '{{link}}Latest emails sent{{/link}} and their performance.', {
 								comment: '{{link}} links to support documentation.',
 								components: {
-									link: <a href={ localizeUrl( supportUrl ) } />,
+									link: <a target="_blank" rel="noreferrer" href={ localizeUrl( supportUrl ) } />,
 								},
 								context: 'Stats: Header popower information when the Emails module has data.',
 							} ) }
@@ -74,7 +74,7 @@ const StatsEmails: React.FC< StatsDefaultModuleProps > = ( {
 					}
 					additionalColumns={ {
 						header: <span>{ translate( 'Opens' ) }</span>,
-						body: ( item: { opens: number } ) => <span>{ item.opens }</span>,
+						body: ( item: { opens_rate: number } ) => <span>{ `${ item.opens_rate }%` }</span>,
 					} }
 					moduleStrings={ moduleStrings }
 					period={ period }
@@ -82,6 +82,8 @@ const StatsEmails: React.FC< StatsDefaultModuleProps > = ( {
 					statType={ statType }
 					mainItemLabel={ translate( 'Latest Emails' ) }
 					metricLabel={ translate( 'Clicks' ) }
+					valueField="clicks_rate"
+					formatValue={ ( value: number ) => `${ value }%` }
 					showSummaryLink
 					className={ className }
 					hasNoBackground
@@ -101,7 +103,7 @@ const StatsEmails: React.FC< StatsDefaultModuleProps > = ( {
 								{
 									comment: '{{link}} links to support documentation.',
 									components: {
-										link: <a href={ localizeUrl( supportUrl ) } />,
+										link: <a target="_blank" rel="noreferrer" href={ localizeUrl( supportUrl ) } />,
 									},
 									context: 'Stats: Info box label when the Emails module is empty',
 								}

@@ -1,4 +1,5 @@
 @import "@wordpress/base-styles/breakpoints";
+$blueberry-color: #3858e9;
 
 .site-migration-credentials {
 	#site-migration-credentials-header {
@@ -7,13 +8,27 @@
 		}
 	}
 
-	.card {
-		max-width: 500px;
-		padding: 2em;
+	&__form {
+		margin-bottom: 60px;
+	}
 
-		@media (max-width: $break-mobile) {
-			padding: 1.25em;
+	&__error-notice.notice .notice__icon-wrapper svg.notice__icon {
+		fill: var(--color-text-inverted);
+	}
+
+	&__error-notice,
+	&__content,
+	&__error-banner {
+		margin: 0 auto 16px;
+		max-width: 500px;
+	}
+
+	.site-migration-credentials__content,
+	.site-migration-credentials__error-banner {
+		@media (min-width: $break-mobile) {
+			margin-bottom: 16px;
 		}
+
 		hr {
 			margin-top: 1em;
 			background: var(--color-border-subtle);
@@ -34,6 +49,9 @@
 		.site-migration-credentials__form-field {
 			margin-top: 1em;
 			flex: 1;
+		}
+		.site-migration-credentials__form-field--notes {
+			margin-top: 5px;
 		}
 		.site-migration-credentials__radio-group {
 			display: flex;
@@ -58,11 +76,16 @@
 			}
 			.form-radio {
 				margin: 0;
+
+				&:checked::before {
+					background-color: $blueberry-color;
+				}
 			}
 		}
 		.site-migration-credentials__form-note {
-			margin-top: 1em;
 			color: var(--color-text-subtle);
+			font-size: 0.875rem;
+			font-style: italic;
 		}
 		.site-migration-credentials__form-error {
 			color: var(--color-error);
@@ -96,5 +119,29 @@
 	.site-migration-credentials__skip {
 		margin-top: 1em;
 		text-align: center;
+	}
+	.site-migration-credentials__special-instructions {
+		.components-button {
+			padding: 0;
+			height: auto;
+			font-size: 0.875rem;
+			font-weight: 600;
+			color: var(--color-text);
+			margin-top: 1rem;
+		}
+
+		.site-migration-credentials__special-instructions-icon {
+			fill: var(--color-text) !important;
+		}
+	}
+	.site-migration-credentials__backup-note {
+		margin-top: 0.25rem;
+	}
+	.site-migration-credentials__error-banner {
+		border-left-color: var(--color-error);
+
+		&.site-migration-credentials__content {
+			padding: 1rem;
+		}
 	}
 }

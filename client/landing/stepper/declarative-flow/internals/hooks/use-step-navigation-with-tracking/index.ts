@@ -1,48 +1,124 @@
 import { OnboardSelect } from '@automattic/data-stores';
 import { useSelect } from '@wordpress/data';
-import { useMemo } from '@wordpress/element';
-import { STEPPER_TRACKS_EVENT_STEP_NAV_SUBMIT } from 'calypso/landing/stepper/constants';
+import { useCallback, useMemo, useRef } from '@wordpress/element';
+import {
+	STEPPER_TRACKS_EVENT_STEP_NAV_EXIT_FLOW,
+	STEPPER_TRACKS_EVENT_STEP_NAV_GO_BACK,
+	STEPPER_TRACKS_EVENT_STEP_NAV_GO_NEXT,
+	STEPPER_TRACKS_EVENT_STEP_NAV_GO_TO,
+	STEPPER_TRACKS_EVENT_STEP_NAV_SUBMIT,
+} from 'calypso/landing/stepper/constants';
 import { ONBOARD_STORE } from 'calypso/landing/stepper/stores';
-import { recordSubmitStep } from '../../analytics/record-submit-step';
+import {
+	recordStepNavigation,
+	type RecordStepNavigationParams,
+} from '../../analytics/record-step-navigation';
 import type { Flow, Navigate, ProvidedDependencies, StepperStep } from '../../types';
 
 interface Params< FlowSteps extends StepperStep[] > {
 	flow: Flow;
 	currentStepRoute: string;
 	navigate: Navigate< FlowSteps >;
-	steps: StepperStep[];
 }
 
 export const useStepNavigationWithTracking = ( {
 	flow,
 	currentStepRoute,
 	navigate,
-	steps,
 }: Params< ReturnType< Flow[ 'useSteps' ] > > ) => {
-	const stepNavigation = flow.useStepNavigation(
-		currentStepRoute,
-		navigate,
-		steps.map( ( step ) => step.slug )
-	);
-	const intent =
-		useSelect( ( select ) => ( select( ONBOARD_STORE ) as OnboardSelect ).getIntent(), [] ) ?? '';
+	const stepNavigation = flow.useStepNavigation( currentStepRoute, navigate );
+	const { intent, goals } = useSelect( ( select ) => {
+		const onboardStore = select( ONBOARD_STORE ) as OnboardSelect;
+		return {
+			intent: onboardStore.getIntent(),
+			goals: onboardStore.getGoals(),
+		};
+	}, [] );
+
 	const tracksEventPropsFromFlow = flow.useTracksEventProps?.();
+	const tracksEventPropsFromFlowRef = useRef( tracksEventPropsFromFlow );
+	tracksEventPropsFromFlowRef.current = tracksEventPropsFromFlow;
+
+	const handleRecordStepNavigation = useCallback(
+		( {
+			event,
+			providedDependencies,
+		}: Omit< RecordStepNavigationParams, 'step' | 'intent' | 'goals' | 'flow' | 'variant' > ) => {
+			const { eventProps, ...dependencies } = providedDependencies || {};
+
+			recordStepNavigation( {
+				event,
+				intent: intent ?? '',
+				goals: goals ?? [],
+				flow: flow.name,
+				step: currentStepRoute,
+				variant: flow.variantSlug,
+				providedDependencies: dependencies,
+				additionalProps: {
+					...( eventProps ?? {} ),
+					...( tracksEventPropsFromFlowRef.current?.[ event ] ?? {} ),
+				},
+			} );
+		},
+		[ intent, goals, currentStepRoute, flow ]
+	);
 
 	return useMemo(
 		() => ( {
-			...stepNavigation,
-			submit: ( providedDependencies: ProvidedDependencies = {}, ...params: string[] ) => {
-				recordSubmitStep(
-					providedDependencies,
-					intent,
-					flow.name,
-					currentStepRoute,
-					flow.variantSlug,
-					tracksEventPropsFromFlow?.[ STEPPER_TRACKS_EVENT_STEP_NAV_SUBMIT ]
-				);
-				stepNavigation.submit?.( providedDependencies, ...params );
-			},
+			...( stepNavigation.submit && {
+				submit: ( providedDependencies: ProvidedDependencies = {}, ...params: string[] ) => {
+					if ( ! providedDependencies?.shouldSkipSubmitTracking ) {
+						handleRecordStepNavigation( {
+							event: STEPPER_TRACKS_EVENT_STEP_NAV_SUBMIT,
+							providedDependencies,
+						} );
+					}
+					stepNavigation.submit?.( providedDependencies, ...params );
+				},
+			} ),
+			...( stepNavigation.exitFlow && {
+				exitFlow: ( to: string ) => {
+					handleRecordStepNavigation( {
+						event: STEPPER_TRACKS_EVENT_STEP_NAV_EXIT_FLOW,
+						providedDependencies: {
+							eventProps: {
+								to,
+							},
+						},
+					} );
+					stepNavigation.exitFlow?.( to );
+				},
+			} ),
+			...( stepNavigation.goBack && {
+				goBack: () => {
+					handleRecordStepNavigation( {
+						event: STEPPER_TRACKS_EVENT_STEP_NAV_GO_BACK,
+					} );
+					stepNavigation.goBack?.();
+				},
+			} ),
+			...( stepNavigation.goNext && {
+				goNext: () => {
+					handleRecordStepNavigation( {
+						event: STEPPER_TRACKS_EVENT_STEP_NAV_GO_NEXT,
+					} );
+					stepNavigation.goNext?.();
+				},
+			} ),
+			...( stepNavigation.goToStep && {
+				goToStep: ( step: string ) => {
+					handleRecordStepNavigation( {
+						event: STEPPER_TRACKS_EVENT_STEP_NAV_GO_TO,
+						providedDependencies: {
+							eventProps: {
+								to: step,
+							},
+						},
+					} );
+					stepNavigation.goToStep?.( step );
+				},
+			} ),
 		} ),
-		[ stepNavigation, intent, flow, currentStepRoute, tracksEventPropsFromFlow ]
+		[ handleRecordStepNavigation, stepNavigation ]
 	);
 };

@@ -3,19 +3,19 @@ import { useBreakpoint } from '@automattic/viewport-react';
 import clsx from 'clsx';
 import { useTranslate } from 'i18n-calypso';
 import { useEffect, useState } from 'react';
-import Layout from 'calypso/a8c-for-agencies/components/layout';
-import LayoutBody from 'calypso/a8c-for-agencies/components/layout/body';
-import LayoutHeader, {
-	LayoutHeaderActions as Actions,
-	LayoutHeaderBreadcrumb as Breadcrumb,
-} from 'calypso/a8c-for-agencies/components/layout/header';
-import LayoutTop from 'calypso/a8c-for-agencies/components/layout/top';
+import { LayoutWithGuidedTour as Layout } from 'calypso/a8c-for-agencies/components/layout/layout-with-guided-tour';
+import LayoutTop from 'calypso/a8c-for-agencies/components/layout/layout-with-payment-notification';
 import MobileSidebarNavigation from 'calypso/a8c-for-agencies/components/sidebar/mobile-sidebar-navigation';
 import {
 	A4A_MARKETPLACE_CHECKOUT_LINK,
 	A4A_MARKETPLACE_LINK,
 } from 'calypso/a8c-for-agencies/components/sidebar-menu/lib/constants';
 import useProductsQuery from 'calypso/a8c-for-agencies/data/marketplace/use-products-query';
+import LayoutBody from 'calypso/layout/multi-sites-dashboard/body';
+import LayoutHeader, {
+	LayoutHeaderActions as Actions,
+	LayoutHeaderBreadcrumb as Breadcrumb,
+} from 'calypso/layout/multi-sites-dashboard/header';
 import { useSelector } from 'calypso/state';
 import getSites from 'calypso/state/selectors/get-sites';
 import ReferralToggle from '../common/referral-toggle';
@@ -83,7 +83,6 @@ function ProductsOverview( { siteId, suggestedProduct, productBrand, searchQuery
 			title={ translate( 'Product Marketplace' ) }
 			wide
 			withBorder
-			compact
 		>
 			<LayoutTop withNavigation>
 				<LayoutHeader showStickyContent={ showStickyContent }>

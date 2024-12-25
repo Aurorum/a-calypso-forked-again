@@ -1,11 +1,7 @@
-import {
-	isNewsletterOrLinkInBioFlow,
-	isSenseiFlow,
-	isWooExpressFlow,
-} from '@automattic/onboarding';
+import { isWooExpressFlow } from '@automattic/onboarding';
 import { useSelect } from '@wordpress/data';
 import { useI18n } from '@wordpress/react-i18n';
-import React, { useEffect, lazy } from 'react';
+import React, { lazy, useEffect } from 'react';
 import Modal from 'react-modal';
 import { generatePath, useParams } from 'react-router';
 import { Route, Routes } from 'react-router-dom';
@@ -20,7 +16,7 @@ import { useSaveQueryParams } from '../../hooks/use-save-query-params';
 import { useSiteData } from '../../hooks/use-site-data';
 import useSyncRoute from '../../hooks/use-sync-route';
 import { useStartStepperPerformanceTracking } from '../../utils/performance-tracking';
-import { StepRoute, StepperLoader } from './components';
+import { StepperLoader, StepRoute } from './components';
 import { Boot } from './components/boot';
 import { RedirectToStep } from './components/redirect-to-step';
 import { useFlowAnalytics } from './hooks/use-flow-analytics';
@@ -75,10 +71,14 @@ export const FlowRenderer: React.FC< { flow: Flow } > = ( { flow } ) => {
 	const currentStepRoute = params.step || '';
 	const isLoggedIn = useSelector( isUserLoggedIn );
 	const { lang = null } = useParams();
+	const isValidStep = params.step != null && stepPaths.includes( params.step );
 
 	// Start tracking performance for this step.
 	useStartStepperPerformanceTracking( params.flow || '', currentStepRoute );
-	useFlowAnalytics( { flow: params.flow, step: currentStepRoute, variant: flow.variantSlug } );
+	useFlowAnalytics(
+		{ flow: params.flow, step: params.step, variant: flow.variantSlug },
+		{ enabled: isValidStep }
+	);
 
 	const { __ } = useI18n();
 	useSaveQueryParams();
@@ -89,15 +89,29 @@ export const FlowRenderer: React.FC< { flow: Flow } > = ( { flow } ) => {
 	// See https://github.com/Automattic/wp-calypso/pull/82981.
 	const selectedSite = useSelector( ( state ) => site && getSite( state, siteSlugOrId ) );
 
-	// this pre-loads all the lazy steps down the flow.
+	// this pre-loads the next step in the flow.
 	useEffect( () => {
+		const nextStepIndex = flowSteps.findIndex( ( step ) => step.slug === currentStepRoute ) + 1;
+		const nextStep = flowSteps[ nextStepIndex ];
+
+		// 0 implies the findIndex returned -1.
+		if ( nextStepIndex === 0 || ! nextStep ) {
+			return;
+		}
+
 		if ( siteSlugOrId && ! selectedSite ) {
 			// If this step depends on a selected site, only preload after we have the data.
 			// Otherwise, we're still waiting to render something meaningful, and we don't want to
 			// potentially slow that down by having the CPU busy initialising future steps.
 			return;
 		}
-		Promise.all( flowSteps.map( ( step ) => 'asyncComponent' in step && step.asyncComponent() ) );
+		if (
+			// Don't load anything on user step because the user step will hard-navigate anyways.
+			currentStepRoute !== 'user' &&
+			'asyncComponent' in nextStep
+		) {
+			nextStep.asyncComponent();
+		}
 		// Most flows sadly instantiate a new steps array on every call to `flow.useSteps()`,
 		// which means that we don't want to depend on `flowSteps` here, or this would end up
 		// running on every render. We thus depend on `flow` instead.
@@ -106,13 +120,12 @@ export const FlowRenderer: React.FC< { flow: Flow } > = ( { flow } ) => {
 		// different points. But even if they do, worst case scenario we only fail to preload
 		// some steps, and they'll simply be loaded later.
 		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [ flow, siteSlugOrId, selectedSite ] );
+	}, [ siteSlugOrId, selectedSite, currentStepRoute, flow ] );
 
 	const stepNavigation = useStepNavigationWithTracking( {
 		flow,
 		currentStepRoute,
 		navigate,
-		steps: flowSteps,
 	} );
 
 	// Retrieve any extra step data from the stepper-internal store. This will be passed as a prop to the current step.
@@ -161,12 +174,22 @@ export const FlowRenderer: React.FC< { flow: Flow } > = ( { flow } ) => {
 				lang: lang === 'en' || isLoggedIn ? null : lang,
 			} );
 
+			const lastPreAuthWalledStepIndex =
+				flowSteps.findIndex( ( step ) => step.slug === 'user' ) - 1;
+			const lastPreAuthWalledStep =
+				lastPreAuthWalledStepIndex < 0 ? null : flowSteps[ lastPreAuthWalledStepIndex ];
+
 			return (
 				<StepComponent
 					navigation={ {
 						submit() {
 							navigate( firstAuthWalledStep.slug, undefined, true );
 						},
+						...( lastPreAuthWalledStep && {
+							goBack() {
+								navigate( lastPreAuthWalledStep.slug, undefined, true );
+							},
+						} ),
 					} }
 					flow={ flow.name }
 					variantSlug={ flow.variantSlug }
@@ -189,14 +212,10 @@ export const FlowRenderer: React.FC< { flow: Flow } > = ( { flow } ) => {
 	};
 
 	const getDocumentHeadTitle = () => {
-		if ( isNewsletterOrLinkInBioFlow( flow.name ) ) {
-			return flow.title;
-		} else if ( isSenseiFlow( flow.name ) ) {
-			return __( 'Course Creator' );
-		}
+		return flow.title ?? __( 'Create a site' );
 	};
 
-	useSignUpStartTracking( { flow, currentStepRoute: currentStepRoute } );
+	useSignUpStartTracking( { flow } );
 
 	return (
 		<Boot fallback={ <StepperLoader /> }>
@@ -209,6 +228,7 @@ export const FlowRenderer: React.FC< { flow: Flow } > = ( { flow } ) => {
 						path={ `/${ flow.variantSlug ?? flow.name }/${ step.slug }/:lang?` }
 						element={
 							<StepRoute
+								key={ step.slug }
 								step={ step }
 								flow={ flow }
 								showWooLogo={ isWooExpressFlow( flow.name ) }
